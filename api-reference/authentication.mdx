@@ -1,0 +1,158 @@
+---
+title: "Authentication"
+description: "Mint a scoped token, give it only the access it needs, and send it on every request."
+icon: "key"
+sidebarTitle: "Authentication"
+---
+
+Every TrackPlay API call is authenticated with a **scoped token** you mint in the
+dashboard. A token carries a fixed set of scopes. A token with no matching scope is
+rejected. It cannot be talked into doing more than it was issued for.
+
+## Mint a token
+
+<Steps>
+  <Step title="Open your workspace settings">
+    In the dashboard sidebar, click **Settings**, then the **API tokens** tab.
+  </Step>
+  <Step title="Create the token">
+    Click **New token**. Give it a name you will recognise later. It shows up in the
+    token list and in your audit log, so `Zapier production` beats `token 2`.
+  </Step>
+  <Step title="Grant only the scopes it needs">
+    Tick the scopes this integration actually uses. A backend that only posts events
+    needs `events:write` and nothing else.
+  </Step>
+  <Step title="Set an expiry, or do not">
+    Leave the expiry blank for a token that never expires. Anything from 1 to 3650 days
+    is accepted.
+  </Step>
+  <Step title="Copy it now">
+    The token is shown **once**. TrackPlay stores only a SHA-256 hash of it, so nobody
+    (including us) can show it to you again. Lost it? Revoke it and mint another.
+  </Step>
+</Steps>
+
+## Scopes
+
+<ParamField path="events:write" type="write-only">
+  Send events to the [Custom Events API](/api-reference/custom-events). Write-only: it
+  cannot read anything back, which makes it the right token to hand to a third-party
+  backend.
+</ParamField>
+
+<ParamField path="conversions:write" type="write-only">
+  Send sales to the [Conversions API](/api-reference/conversions).
+</ParamField>
+
+<ParamField path="conversions:read" type="read-only">
+  Read recorded conversions.
+</ParamField>
+
+<ParamField path="analytics:read" type="read-only">
+  Read analytics and reporting data.
+</ParamField>
+
+<ParamField path="videos:read" type="read-only">
+  List and read videos.
+</ParamField>
+
+<ParamField path="videos:write" type="write-only">
+  Create, update and delete videos.
+</ParamField>
+
+<ParamField path="webhooks:write" type="write-only">
+  Manage webhook subscriptions and Zapier hooks.
+</ParamField>
+
+<ParamField path="integrations:read" type="read-only">
+  Read integration configuration.
+</ParamField>
+
+<ParamField path="workspace:read" type="read-only">
+  Read workspace details.
+</ParamField>
+
+## Send the token
+
+Either header works. Pick one.
+
+<CodeGroup>
+
+```bash X-API-Key
+curl https://app.trackplay.io/api/v1/conversions \
+  -H "X-API-Key: tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "video_code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34" }'
+```
+
+```bash Authorization
+curl https://app.trackplay.io/api/v1/conversions \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "video_code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34" }'
+```
+
+</CodeGroup>
+
+The token decides the workspace. You never send a workspace ID, and you cannot write
+into a workspace your token does not belong to.
+
+## Base URLs
+
+| API | Base URL |
+| --- | --- |
+| Conversions, videos, webhooks | `https://app.trackplay.io/api/v1` |
+| Custom Events | `https://e.trackplay.io` |
+
+Events run on their own host because they run at a different volume. Same token, same
+scopes.
+
+## When auth fails
+
+<AccordionGroup>
+  <Accordion title="401: AUTH_REQUIRED">
+    No token reached us. Check the header name and that your HTTP client is not
+    stripping it on redirect.
+  </Accordion>
+  <Accordion title="401: INVALID_TOKEN">
+    The token is wrong, expired, or revoked. Tokens are matched on an exact hash: a
+    stray space or newline will land here.
+  </Accordion>
+  <Accordion title="403: INSUFFICIENT_SCOPE">
+    The token is valid but was not granted the scope this endpoint needs. The response
+    names the scope in `required`. Mint a new token with it; you cannot add a scope to an
+    existing token.
+  </Accordion>
+  <Accordion title="503: AUTH_UNAVAILABLE">
+    Token verification is temporarily unavailable. **This is not a rejection of your
+    token.** We fail closed rather than let an outage authenticate anyone, so retry
+    shortly rather than re-issuing credentials.
+  </Accordion>
+</AccordionGroup>
+
+## Rotating and revoking
+
+Revoke a token from the same **Settings → API tokens** tab. Revocation is immediate at
+the source, and takes effect on the events host within 5 minutes as its auth cache
+expires.
+
+<Warning>
+  Revoking breaks every integration using that token, straight away. To rotate without
+  downtime: mint the new token, deploy it, confirm traffic has moved, then revoke the
+  old one.
+</Warning>
+
+## The legacy workspace key
+
+Older workspaces have a single `tp_` API key with blanket access to everything,
+including analytics reads. It still works, and it is deprecated.
+
+<Warning>
+  The Custom Events API **rejects the legacy key outright**. A key that can read all your
+  analytics has no business sitting in a third-party backend to post events. Mint a
+  scoped `events:write` token instead.
+</Warning>
+
+Legacy-key responses carry a `Deprecation` header. Move to scoped tokens when you touch
+the integration next.

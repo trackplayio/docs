@@ -1,242 +1,105 @@
-This comprehensive guide covers all configuration options and best practices for setting up TrackPlay integrations.
+---
+title: "Integrations"
+description: "Connect your cart, your pixels and your CRM so a sale finds its way back to the video."
+icon: "plug"
+sidebarTitle: "Overview"
+---
 
-## Configuration Overview
+A play is only half the story. An integration closes the loop: your cart tells TrackPlay
+the sale happened, and TrackPlay tells you which video caused it.
 
-Each integration type has specific configuration requirements:
+Everything lives under **Integrations** in the sidebar. Each platform is a card. Click
+**Connect**.
 
-### Universal Settings
-- **Integration Status**: All integrations have status tracking
-- **Unique URLs**: Each integration gets a unique postback URL
-- **Session Tracking**: Automatic session ID generation for all integrations
+## Cart platforms
 
-### Platform-Specific Settings
-- **Buygoods**: Tracking parameter selection
-- **Clickbank**: Encryption key + tracking parameter
-- **ElasticFunnels**: No additional configuration needed
+These carry the viewer's session into the checkout and post the sale back.
 
-## Step-by-Step Configuration
+<CardGroup cols={2}>
+  <Card title="BuyGoods" icon="cart-shopping" href="/integration/buygoods" />
+  <Card title="ClickBank" icon="cart-shopping" href="/integration/clickbank" />
+  <Card title="Digistore24" icon="cart-shopping" href="/integration/digistore24" />
+  <Card title="ThriveCart" icon="cart-shopping" href="/integration/thrivecart" />
+  <Card title="SamCart" icon="cart-shopping" href="/integration/samcart" />
+  <Card title="WarriorPlus" icon="cart-shopping" href="/integration/warriorplus" />
+  <Card title="JVZoo" icon="cart-shopping" href="/integration/jvzoo" />
+  <Card title="ElasticFunnels" icon="cart-shopping" href="/integration/elasticfunnels" />
+</CardGroup>
 
-### 1. Integration Activation
+Not on the list? Post the sale yourself with the [Conversions
+API](/api-reference/conversions).
 
-**Accessing Integration Settings**
-1. Log into your TrackPlay dashboard
-2. Navigate to **Integrations** section
-3. Click **Add new integration** to see available options
+## How a cart integration works
 
-**Choosing Your Integration**
-- Review the list of available integrations
-- Each integration shows its current status (Active/Not integrated)
-- Click **Activate** for new integrations or **Manage** for existing ones
+<Snippet file="connect-integration.mdx" />
 
-### 2. Parameter Configuration
+Once it is **Active**:
 
-#### Buygoods Parameters
-Select from these tracking parameters:
+1. A viewer watches your video. TrackPlay gives them a session.
+2. Every link on the page pointing at your cart is tagged with that session,
+   automatically. You never edit a buy button.
+3. They buy. The session rides into the cart.
+4. The cart posts the sale back.
+5. The sale is joined to the play. It shows up against the video, the traffic source,
+   the affiliate, and the split-test arm.
 
-| Parameter | Description | Use Case |
-|-----------|-------------|----------|
-| `subid_1` | Subid 1 | General affiliate tracking |
-| `subid_2` | Subid 2 | Secondary campaign tracking |
-| `subid_3` | Subid 3 | Tertiary campaign tracking |
-| `vid1` | Vendor ID 1 | Primary vendor identification |
-| `vid2` | Vendor ID 2 | Secondary vendor tracking |
-| `vid3` | Vendor ID 3 | Additional vendor segmentation |
+<Warning>
+  Pick a tracking parameter nothing else is using. TrackPlay **overwrites** the one you
+  choose on every cart URL. If an affiliate network is already writing to it, one of you
+  loses the data.
+</Warning>
 
-#### Clickbank Parameters
-Select from these tracking parameters:
+## Pixels, tags and analytics
 
-| Parameter | Description | Use Case |
-|-----------|-------------|----------|
-| `unique_aff_sub1` | Unique Affiliate Sub 1 | Primary affiliate tracking |
-| `unique_aff_sub2` | Unique Affiliate Sub 2 | Secondary affiliate campaigns |
-| `unique_aff_sub3` | Unique Affiliate Sub 3 | Tertiary tracking |
-| `unique_aff_sub4` | Unique Affiliate Sub 4 | Additional segmentation |
-| `unique_aff_sub5` | Unique Affiliate Sub 5 | Extended tracking |
-| `vtid` | Vendor Tracking ID | Vendor-specific identification |
+<CardGroup cols={2}>
+  <Card title="Google Tag Manager" icon="google" href="/integration/gtm">
+    Player events pushed to your `dataLayer`.
+  </Card>
+  <Card title="Segment" icon="chart-simple" href="/integration/segment">
+    Video events through `analytics.track()`.
+  </Card>
+</CardGroup>
 
-**Encryption Key Requirements (Clickbank Only)**
-- Required for secure data transmission
-- Must match the key configured in your Clickbank account
-- Used to decrypt conversion data from Clickbank
-- Keep this key confidential and secure
+**Meta CAPI**, **TikTok Events** and **GA4** connect the same way: card, **Connect**,
+paste your credentials. They fire server-side, so an ad blocker cannot quietly drop your
+conversions.
 
-### 3. Postback URL Configuration
+**RedTrack** and **Everflow** take a postback template, with macros for click ID, payout,
+currency and order ID.
 
-Once your integration is configured and shows "Ready to use" status, you'll receive a unique postback URL.
+## CRM
 
-#### For Buygoods
-Add the TrackPlay postback URL to these Buygoods settings:
-- **New Order URL**: Captures successful purchases
-- **Order Refund URL**: Tracks refunded transactions
-- **Order Chargeback URL**: Monitors disputed transactions
+**ActiveCampaign** and **GoHighLevel** connect with an API key. Once connected, you can tag
+a viewer in your CRM based on how far they watched: see [Timed
+events](/player/cta-and-timing#timed-events).
 
-#### For Clickbank
-Add the TrackPlay postback URL to these Clickbank API Management settings:
-- **New Order URL**: Captures successful purchases
-- **Order Refund URL**: Tracks refunded transactions  
-- **Order Chargeback URL**: Monitors disputed transactions
+## Outbound
 
-Access these settings at: https://accounts.clickbank.com/master/dashboard/api-management
+<CardGroup cols={2}>
+  <Card title="Webhooks" icon="webhook" href="/integration/webhooks">
+    Signed, retried, and yours to consume.
+  </Card>
+  <Card title="Zapier" icon="bolt" href="/integration/webhooks#zapier">
+    Leads, sales and split-test winners into anything.
+  </Card>
+</CardGroup>
 
-## Advanced Configuration Options
+## Troubleshooting
 
-### Multi-Integration Setup
-You can run multiple integrations simultaneously:
-- Configure different payment processors for different products
-- Use ElasticFunnels to enhance existing integrations
-- Track conversions across multiple platforms
-
-### Parameter Strategy
-Choose parameters that don't conflict with existing campaigns:
-
-**Dedicated Parameters**
-- Reserve specific parameters only for TrackPlay
-- Avoid parameters used by other tracking systems
-- Document your parameter usage for team reference
-
-**Conflict Resolution**
-- If parameters are already in use, TrackPlay will override them
-- Original parameter values will be replaced with session IDs
-- Plan your parameter strategy to avoid data loss
-
-### Integration Priority
-When multiple integrations are active:
-- Each integration operates independently
-- ElasticFunnels enhances all other active integrations
-- No conflicts between different payment processors
-
-## Security Configuration
-
-### Postback URL Security
-- URLs contain unique codes for authentication
-- Never share postback URLs publicly
-- Only provide URLs to authorized payment processor personnel
-
-### Encryption (Clickbank)
-- Use strong encryption keys (recommended: 32+ characters)
-- Store encryption keys securely
-- Rotate keys periodically for enhanced security
-- Ensure keys match between TrackPlay and Clickbank
-
-### Access Control
-- Limit integration configuration access to authorized team members
-- Monitor integration status changes
-- Review configuration changes regularly
-
-## Testing Your Configuration
-
-### Pre-Launch Testing
-
-**1. Integration Status Check**
-- Verify integration shows "Ready to use"
-- Confirm all required parameters are configured
-- Check that postback URLs are properly set
-
-**2. Link Modification Test**
-- Load a page with your TrackPlay video
-- Inspect purchase links in browser developer tools
-- Verify URLs now contain TrackPlay session parameters
-
-**3. End-to-End Test**
-- Process a small test purchase
-- Check TrackPlay analytics for conversion data
-- Verify data appears in your payment processor account
-
-### Ongoing Monitoring
-
-**Integration Health**
-- Monitor integration status daily
-- Set up alerts for status changes
-- Regular configuration audits
-
-**Performance Tracking**
-- Monitor conversion attribution rates
-- Check for data discrepancies
-- Compare TrackPlay data with payment processor reports
-
-## Troubleshooting Configuration Issues
-
-### Integration Won't Activate
-**Common Causes:**
-- Invalid encryption key (Clickbank)
-- Missing required parameters
-- Payment processor account issues
-
-**Solutions:**
-- Double-check all configuration fields
-- Verify encryption key accuracy
-- Contact payment processor support if needed
-
-### Status Shows "Not Ready"
-**Required Actions:**
-- Complete all required configuration fields
-- Click "Update Integration" to save changes
-- Wait for status to update (may take a few minutes)
-
-### Postback URL Not Working
-**Verification Steps:**
-- Check URL format and characters
-- Verify URL is added to correct payment processor fields
-- Test with a small transaction
-- Contact support if issues persist
-
-### Links Not Being Modified
-**Troubleshooting:**
-- Verify integration status is "Ready to use"
-- Check that purchase links contain expected domain patterns
-- Ensure TrackPlay video player loads completely
-- Test on different browsers and devices
-
-## Configuration Best Practices
-
-### Planning Your Setup
-1. **Audit Existing Tracking**: Review current parameter usage
-2. **Choose Dedicated Parameters**: Avoid conflicts with existing systems
-3. **Document Configuration**: Keep records of your choices
-4. **Test Thoroughly**: Verify everything works before launch
-
-### Ongoing Management
-1. **Regular Status Checks**: Monitor integration health
-2. **Performance Reviews**: Analyze conversion attribution
-3. **Security Audits**: Review access and encryption keys
-4. **Update Documentation**: Keep configuration records current
-
-### Team Coordination
-1. **Access Management**: Control who can modify integrations
-2. **Change Communication**: Notify team of configuration changes
-3. **Training**: Ensure team understands integration setup
-4. **Support Process**: Establish procedures for troubleshooting
-
-## Configuration Checklist
-
-### Before Launch
-- [ ] Integration activated and status shows "Ready to use"
-- [ ] All required parameters configured
-- [ ] Encryption key set (Clickbank only)
-- [ ] Postback URLs added to payment processor
-- [ ] Test purchase completed successfully
-- [ ] Analytics showing conversion data
-
-### Post-Launch
-- [ ] Daily status monitoring established
-- [ ] Conversion data validation completed
-- [ ] Team trained on configuration management
-- [ ] Documentation updated with final settings
-- [ ] Support contacts identified
-
-## Getting Help with Configuration
-
-### Self-Service Resources
-- Integration-specific guides for detailed setup instructions
-- Status indicators provide real-time configuration feedback
-- Built-in validation helps identify configuration issues
-
-### Support Options
-- Contact TrackPlay support for complex configuration questions
-- Provide workspace ID and integration details when requesting help
-- Include screenshots of configuration screens for faster resolution
-
-### Payment Processor Support
-- Contact Buygoods or Clickbank support for platform-specific issues
-- Have your TrackPlay postback URL ready when contacting support
-- Verify account permissions for postback URL configuration
+<AccordionGroup>
+  <Accordion title="The status will not leave 'Not configured'">
+    The status only flips when a real test conversion arrives. It is not a save
+    confirmation. It is proof the postback actually works. Check the URL is pasted into
+    your cart exactly, then push a test sale.
+  </Accordion>
+  <Accordion title="Sales are recorded, but no video is attached">
+    The buy link was not tagged. It has to point directly at the cart's domain, and sit on
+    the same page as the player. A redirect or link shortener in between strips the query
+    string, and the session with it.
+  </Accordion>
+  <Accordion title="Nothing is tracked at all">
+    Check the player is on the same page as the buy button. If your checkout lives
+    elsewhere, carry the session yourself and post the sale through the [Conversions
+    API](/api-reference/conversions).
+  </Accordion>
+</AccordionGroup>

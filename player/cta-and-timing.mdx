@@ -1,0 +1,132 @@
+---
+title: "Timed CTAs and pixels"
+description: "Reveal the buy button at the exact second. Fire your pixel at 75% watched, not on page load."
+icon: "bullseye"
+sidebarTitle: "Timed CTAs and pixels"
+---
+
+Your pixel fires on page load. Which means you are retargeting people who bounced at
+second three.
+
+Everything on this page exists to tie an action to a moment in the video: the moment the
+offer lands, the moment intent is real.
+
+## Timed CTA cards
+
+A card that appears over the player at a set time: a headline, body copy, an image, and a
+button.
+
+**Video → Customize → Timed CTA Cards.**
+
+<AccordionGroup>
+  <Accordion title="Timing">
+    - **Show at**: the second the card appears.
+    - **Duration**: how long it stays, from 1 to 600 seconds.
+  </Accordion>
+  <Accordion title="Appearance">
+    - **Template**: `pill`, `banner`, `card`, or `fullscreen`.
+    - **Position**: `bottom-right`, `bottom`, `top`, or `center`.
+    - **Headline**, **body**, **button text**, **button URL**, **image**.
+  </Accordion>
+  <Accordion title="Countdown">
+    Optional countdown on the card. Set the number of seconds.
+  </Accordion>
+  <Accordion title="A/B variants">
+    Up to 10 weighted variants per card: different headline, body, button text, button
+    URL or image. Traffic is split by weight.
+
+    This is a lightweight rotation, not a statistical test: it shows variants by weight
+    but does not declare a winner. For a decision backed by significance testing, use a
+    [split test](/split-tests/overview).
+  </Accordion>
+  <Accordion title="Fire a pixel when it shows">
+    Tick **Facebook** or **Google** to fire that pixel at the moment the card is revealed,
+    not on page load.
+  </Accordion>
+</AccordionGroup>
+
+The button URL automatically carries the viewer's attribution key, so a click that turns
+into a sale is traced back to the play.
+
+## Pixels
+
+Fire Facebook, Google, or custom code at a point in the video.
+
+**Video → Customize → Pixels.**
+
+<Steps>
+  <Step title="Choose the trigger">
+    Fire at a **time** (`HH:MM:SS`) or at a **percentage watched** (0-100).
+  </Step>
+  <Step title="Add the pixel">
+    - **Facebook**: needs your Pixel ID.
+    - **Google**: needs your Conversion ID and Conversion Label.
+    - **Custom**: raw HTML or JavaScript.
+  </Step>
+  <Step title="Decide if it repeats">
+    Leave **call once** on to fire at most once per session.
+  </Step>
+</Steps>
+
+<Check>
+  Firing at 75% watched instead of on page load means you retarget people who actually
+  heard the offer. If you change one thing on this page, change this.
+</Check>
+
+## Watch-time gates
+
+Reveal an element **on your page** (a buy button, a form, a link) once the viewer has
+watched enough of the video.
+
+**Video → Customize → Watch-Time Gates.**
+
+<ParamField path="Selector" type="CSS selector">
+  What to reveal. Comma-separate to reveal several things at once.
+</ParamField>
+
+<ParamField path="Unlock at" type="1-100">
+  The percentage of the video that must be watched.
+</ParamField>
+
+<ParamField path="Reveal animation" type="fade | slide-down | none">
+  How it appears.
+</ParamField>
+
+<Warning>
+  A watch gate is a friction layer, not a lock. The element is on the page. Anyone
+  reading the HTML can find it. If it must be secret, keep it off the page until your
+  server decides otherwise.
+</Warning>
+
+## Timed events
+
+Lower level than a CTA card: run an arbitrary action at a time or percentage.
+
+**Video → Customize → CTA Timed Events.**
+
+| Action | What it does |
+| --- | --- |
+| **Show** | Reveals an element matching a CSS selector. |
+| **Hide** | Hides an element matching a CSS selector. |
+| **Run JavaScript** | Executes your own code. |
+| **Tag in CRM** | Adds tags to the viewer in ActiveCampaign or GoHighLevel. |
+
+Each event fires at a **time** or a **percentage**, and you choose whether it fires once
+or on every subsequent play.
+
+<Tip>
+  **AI-suggested CTAs** sits on this tab. It reads your transcript alongside your
+  retention, click and conversion data, then proposes the moments worth putting a CTA on.
+  One click adds it.
+</Tip>
+
+## Tracking CTAs on your own page
+
+If your buy button lives on the page rather than in the player, TrackPlay can still
+attribute clicks on it.
+
+**Video → Customize → Advanced User Tracking → CTA tracking.**
+
+Give it a CSS selector. Optionally give the CTA a **value**, so value-weighted reports
+know what a click was worth, and turn on the attribution key so the click carries the
+session through to your cart.

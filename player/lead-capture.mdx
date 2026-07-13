@@ -1,0 +1,60 @@
+---
+title: "Lead capture"
+description: "Ask for the email at the moment they want the rest, not before they care."
+icon: "envelope"
+sidebarTitle: "Lead capture"
+---
+
+A form on page load asks for an email before you have earned it. A form at 4:00, right
+before the reveal, asks for it when they want what comes next.
+
+**Video → Customize → Lead Capture Form.**
+
+## Set it up
+
+<Steps>
+  <Step title="Choose when it appears">
+    - **First play**: as soon as they start watching.
+    - **At a time**: a number of seconds in. This is the one that converts.
+  </Step>
+  <Step title="Decide if they can skip">
+    Turn on **allow skip** to let them past it, optionally after a delay of up to 60
+    seconds.
+
+    A hard gate captures more emails and loses more viewers. Which trade you want depends
+    on whether the list or the sale is the point.
+  </Step>
+  <Step title="Pick the fields">
+    Name, email, phone, and a GDPR consent checkbox. Turn on only what you will use.
+  </Step>
+  <Step title="Send it somewhere">
+    Set a **webhook URL** to receive the submission.
+  </Step>
+</Steps>
+
+<Tip>
+  Turn on **pause on show** so the video stops while the form is up. A form competing with
+  a talking video gets ignored by both.
+</Tip>
+
+## Designing it
+
+The form has a drag-and-drop canvas, the same one the pause and end screens use. Start
+from a template and edit, or build it from nothing.
+
+## Where the lead goes
+
+A submission fires the `lead.captured` event, which reaches everything you have connected:
+
+- your **webhook**,
+- **Zapier**,
+- **Meta CAPI** and **TikTok Events** as a Lead event,
+- **ActiveCampaign** or **GoHighLevel**, as a contact.
+
+See [Webhooks](/integration/webhooks).
+
+<Note>
+  The lead is tied to the viewer's session, so the retention curve, the traffic source and
+  any later sale are all joined to that person. That is the difference between a list and a
+  list you can attribute.
+</Note>

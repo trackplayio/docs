@@ -1,0 +1,48 @@
+---
+title: Segment
+description: Send video engagement events to Segment and fan them out to all your downstream analytics destinations.
+icon: "chart-simple"
+sidebarTitle: "Segment"
+---
+
+Connect Segment once and your video engagement data reaches every tool behind it: Salesforce, HubSpot, Amplitude, and the rest.
+
+## Overview
+
+The Segment integration:
+- Loads the Segment Analytics.js snippet on pages where your TrackPlay video is embedded
+- Fires `analytics.track()` calls for all key player interactions
+- Works with every Segment destination. No extra configuration.
+
+## Setup Instructions
+
+### Step 1: Create a Segment Source
+
+1. Log into [Segment](https://app.segment.com)
+2. Go to **Connections → Sources → Add Source**
+3. Select **JavaScript** (Browser)
+4. Copy the **Write Key**
+
+### Step 2: Connect in TrackPlay
+
+1. Go to **Integrations** in your TrackPlay dashboard
+2. Find **Segment** and click **Connect**
+3. Paste your Write Key
+4. Click **Save**. The integration is active immediately.
+
+## Events Sent to Segment
+
+| Event | Properties | When |
+|-------|-----------|------|
+| `Video Played` | `videoCode` | Video starts playing |
+| `Video Paused` | `videoCode` | Video is paused |
+| `Video Completed` | `videoCode` | Video finishes |
+| `Video Progress` | `videoCode`, `percentComplete` | At 25%, 50%, 75% milestones |
+| `Video Conversion` | `videoCode`, conversion data | A conversion is recorded |
+
+## Troubleshooting
+
+### Events not appearing in Segment
+- Verify the Write Key is correct and the source is active
+- Check the browser console for Segment analytics.js errors
+- Use the Segment Debugger (**Connections → your source → Debugger**) to monitor incoming events in real time

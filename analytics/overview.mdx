@@ -1,0 +1,147 @@
+---
+title: "Analytics"
+description: "See the exact second they leave, which traffic pays, and whether the buyers watched differently."
+icon: "chart-line"
+sidebarTitle: "Overview"
+---
+
+Play counts and average watch time never told you the one thing that mattered: which
+second moved the buyer. These tabs do.
+
+Open any video and you get six tabs.
+
+<CardGroup cols={2}>
+  <Card title="General" icon="gauge">
+    Your metric cards, each with a sparkline and a trend. Fully customisable. See
+    [Custom metrics](/analytics/custom-metrics).
+  </Card>
+  <Card title="Retention" icon="chart-area">
+    The drop-off curve, second by second.
+  </Card>
+  <Card title="Funnel" icon="filter">
+    Page view → play → 25/50/75% → end → sale.
+  </Card>
+  <Card title="Sources" icon="coins">
+    Which traffic actually pays.
+  </Card>
+  <Card title="Quality" icon="gauge-high">
+    Whether the player is losing you sales.
+  </Card>
+  <Card title="Embed" icon="code">
+    Your embed snippets.
+  </Card>
+</CardGroup>
+
+## Retention
+
+The curve of who is still watching, and when they left.
+
+Two things make it more than a pretty chart:
+
+**Buyers vs non-buyers.** Overlay the two curves. If your buyers watched past 4:10 and
+your non-buyers did not, you have found the moment your video sells. That is the moment
+to protect.
+
+**Markers.** Your CTAs and conversion density are drawn onto the timeline, so you can see
+whether the drop-off lands before or after the ask.
+
+<Tip>
+  The flat answer to "what should I cut?" is the cliff on this chart. Find the second
+  where the line falls off, watch it, and cut what you find.
+</Tip>
+
+## Funnel
+
+Where the viewer stopped, at every stage from page view to sale: a rate at each step,
+and one overall.
+
+A high play rate and a low 50% rate is a hook problem. A high 75% rate and a low
+conversion rate is an offer problem. The funnel tells you which one you have.
+
+## Sources
+
+Which traffic pays.
+
+| Metric | What it is |
+| --- | --- |
+| **EPC** | Revenue per click |
+| **RPV** | Revenue per play |
+| **AOV** | Average order value |
+| **ROAS** | Revenue ÷ affiliate payout |
+| **Net** | Revenue − payout |
+
+Broken out by affiliate, by referring domain, and by traffic source.
+
+<Note>
+  ROAS is `null` (not zero) when no payout was captured for that source. A zero would
+  read as "this source lost money", which is a different claim from "we do not know what it
+  cost".
+</Note>
+
+You can also break any metric down by **campaign, ad set, ad, and creative**, so a
+winning creative is visible as a creative and not only as a spike in the total.
+
+## Quality
+
+A slow player kills the sale before the hook lands. This tab tells you if that is
+happening.
+
+<AccordionGroup>
+  <Accordion title="Speed">
+    Time to first frame and startup time, at the median and the 95th percentile. The p95
+    is the one that matters. It is the experience of your worst-served viewers, and they
+    are the ones who leave.
+  </Accordion>
+  <Accordion title="Stability">
+    Rebuffer rate, rebuffer ratio, dropped-frame rate.
+  </Accordion>
+  <Accordion title="Failure">
+    Playback failure rate, exits before start, and a breakdown of the errors behind them.
+  </Accordion>
+  <Accordion title="Autoplay">
+    How often autoplay actually started, and how often viewers unmuted.
+  </Accordion>
+</AccordionGroup>
+
+A KPI with no samples reads **"No data"**, never `0%`. A zero would be a lie: it would
+say "nothing went wrong" when the truth is "nothing was measured".
+
+Errors are classified so the tab shows genuine failures, not noise. Auto-recovered
+events (a buffer nudge, a stall the player fixed by itself) are collected under
+**Diagnostics** rather than counted against you.
+
+## Traffic quality
+
+How much of your traffic is human.
+
+On the video's General tab and on the workspace dashboard: the split between human, bot,
+datacenter and VPN sessions, with a country breakdown.
+
+<Warning>
+  Bot and datacenter detection is reliable. **VPN detection usually is not**: it needs an
+  IP-reputation add-on, and without it most VPN traffic shows up as datacenter or human.
+  The card says so where you read it.
+</Warning>
+
+## Audience and hot leads
+
+**Audience** in the sidebar lists identified viewers. Click one for a full profile:
+lifetime watch time, every video they touched, their events, their conversions, their
+revenue.
+
+**Hot leads** scores viewers 0-100 on watch behaviour: did they reach the offer, did they
+unmute, did they come back, did they click. Cold, warm, or hot.
+
+<Note>
+  The score is a transparent heuristic, not a black box. It is built from signals you can
+  see on the viewer's own profile, so you can always check its work.
+</Note>
+
+## Export it
+
+Your data is yours.
+
+- **Webhooks** push events to you as they happen.
+- The **[Analytics Export API](/api-reference/authentication)** pulls summaries,
+  retention curves, raw events and conversions, with a token carrying `analytics:read`.
+- Bulk exports run as a job and hand back a download URL.

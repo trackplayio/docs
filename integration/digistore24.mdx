@@ -1,0 +1,76 @@
+---
+title: Digistore24
+description: Connect your Digistore24 vendor account to TrackPlay for automatic conversion tracking and link rewriting.
+icon: "cart-shopping"
+sidebarTitle: "Digistore24"
+---
+
+Connect your Digistore24 account to TrackPlay to automatically track conversions from your video content.
+
+## Overview
+
+The Digistore24 integration allows TrackPlay to:
+- Automatically inject session IDs into Digistore24 purchase links on your page
+- Capture conversion data via IPN (Instant Payment Notification) webhook
+- Attribute sales back to the specific video session that drove the conversion
+
+## Setup Instructions
+
+### Step 1: Activate the Integration
+
+1. Go to **Integrations** in your TrackPlay dashboard
+2. Find **Digistore24** and click **Connect**
+3. You will be taken to the Digistore24 settings page
+
+### Step 2: Configure Tracking Parameters
+
+Choose which parameter TrackPlay should use to inject your session ID:
+
+**Available Parameters:**
+- `cpersist` - Digistore24 custom persistence parameter (recommended)
+- `aff_sub` - Affiliate sub-parameter
+- `sub1`, `sub2`, `sub3` - Generic sub-parameters
+
+1. Select your preferred tracking parameter from the dropdown
+2. Click **Save & Verify**
+
+### Step 3: Configure Digistore24 IPN URL and Verify
+
+After saving, a **Postback Setup** modal will open automatically.
+
+1. Copy the **IPN Webhook URL** from the modal
+2. Log into your Digistore24 vendor account
+3. Go to **Vendor → Edit Product → Integration tab**
+4. Paste the URL into the **IPN URL** field
+5. Save the product
+6. Trigger a test IPN from Digistore24
+7. TrackPlay detects the test and marks the integration **Active**
+
+<Info>
+The integration stays in **Not configured** state until a test IPN is received. This ensures the webhook is correctly wired before real conversions are processed.
+</Info>
+
+## How It Works
+
+1. **Visitor watches your video.** TrackPlay opens a session for them.
+2. **Links are tagged automatically.** Every `digistore24.com` link on the page carries the session in your chosen parameter.
+3. **They buy.** The parameter carries the session into the checkout.
+4. **Digistore24 posts back.** It sends an IPN notification to your TrackPlay URL.
+5. **The sale is credited** to the video that made it.
+
+## Troubleshooting
+
+### Integration stuck on "Not configured"
+- Ensure you have clicked **Save & Verify** with a parameter selected
+- Make sure the IPN URL is correctly saved in Digistore24
+- Trigger a test IPN. The integration goes Active by itself once it arrives.
+
+### Links not being modified
+- Confirm your Digistore24 links contain `digistore24.com` in the URL
+- Check that the TrackPlay video player has fully loaded before the user sees the links
+- Verify the integration shows **Active** status
+
+### No conversions showing
+- Verify the IPN URL is set for both sales and refunds in Digistore24
+- Cross-reference with your Digistore24 transaction history
+- Check that the tracking parameter matches what you configured in TrackPlay

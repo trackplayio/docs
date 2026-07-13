@@ -1,0 +1,88 @@
+---
+title: "Custom metrics"
+description: "Define the metric your business runs on, then chart it, split-test on it, and gate reports by it."
+icon: "sliders"
+sidebarTitle: "Custom metrics"
+---
+
+The built-in metrics cover plays, retention and revenue. A custom metric covers whatever
+else you sell on: an add-to-cart click, a quiz completion, a scroll to the guarantee.
+
+Once defined, a custom metric behaves like any other: it gets a card, a sparkline and a
+trend, and it can be the **goal metric of a split test**.
+
+## Define one
+
+<Steps>
+  <Step title="Open the metric library">
+    Go to a video → **Analytics → General**, then click **Customize metrics**.
+  </Step>
+  <Step title="Create the metric">
+    Give it a name, then choose what it counts.
+  </Step>
+  <Step title="Arrange the cards">
+    Drag the cards into the order you want. The layout is saved per video.
+  </Step>
+</Steps>
+
+## What a metric counts
+
+<ParamField path="Event" type="required">
+  Which event to count: a built-in player event (`click`, `hover`, `scroll`, and so on),
+  or **`custom`** for an event you send yourself via the [Custom Events
+  API](/api-reference/custom-events).
+</ParamField>
+
+<ParamField path="Match on" type="el_href | el_text | event_name">
+  Which part of the event to match against. For a click, match the link's `href` or its
+  visible text. For a custom event, match the event name.
+</ParamField>
+
+<ParamField path="Match mode" type="contains | equals | wildcard | regex">
+  How to compare.
+</ParamField>
+
+<ParamField path="Values / Exclude values" type="list">
+  What to match, and what to explicitly rule out.
+</ParamField>
+
+<ParamField path="Report as" type="count | pct | sum">
+  - **count**: how many times it happened.
+  - **pct**: as a percentage of a denominator you choose.
+  - **sum**: the total of a numeric field, e.g. the `value` on your custom events.
+</ParamField>
+
+<ParamField path="Video time condition" type="optional">
+  Only count the event if it happened before or after a point in the video.
+</ParamField>
+
+<Warning>
+  A click metric with no matcher counts **every** click on the page, which is almost never
+  what you want. Set the match values.
+</Warning>
+
+## Declaring an event name
+
+Defining a custom metric on the `custom` event does double duty: it also **declares that
+event name** so the browser is allowed to send it.
+
+```js
+window.trackplay.track('quiz_completed', { value: 10 });
+```
+
+That call is rejected until `quiz_completed` exists as a custom metric. See [Custom Events
+API](/api-reference/custom-events#declare-the-event-name) for why the browser path works
+this way.
+
+<Note>
+  Events sent from your **backend** do not need the declaration to be accepted: a token is
+  already proof of trust. They still need it to be *charted*. Define the metric either way.
+</Note>
+
+## Preset metrics
+
+Connect an integration and it brings its own metrics with it: ElasticFunnels, ClickBank,
+BuyGoods and Digistore24 each ship a preset group, plus a generic "any funnel" set.
+
+Presets are fixed: you can chart them and split-test on them, but you cannot edit or
+delete them. Build your own alongside.

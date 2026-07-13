@@ -1,0 +1,29 @@
+---
+title: JVZoo
+description: Connect JVZoo to TrackPlay for automatic conversion tracking and affiliate link rewriting.
+icon: "cart-shopping"
+sidebarTitle: "JVZoo"
+---
+
+Connect your JVZoo vendor account to TrackPlay to automatically track affiliate sales and inject session IDs into checkout links.
+
+## Setup Instructions
+
+### Step 1: Connect
+1. Go to **Integrations** → find **JVZoo** → click **Connect**
+
+### Step 2: Configure
+1. Select the tracking parameter (`aff_sub`, `aff_sub2`, `aff_sub3`, `aff_sub4`, or `aff_sub5`)
+2. Click **Save & Verify**
+
+### Step 3: Add IPN URL and Verify
+1. Copy the IPN URL from the setup modal
+2. In JVZoo: go to **Vendor → Product → Advanced → IPN URL**
+3. Paste the URL and save
+4. Trigger a test purchase
+5. TrackPlay detects the test and marks the integration **Active**
+
+## How It Works
+- All `jvzoo.com` links on your page are automatically updated with the session ID
+- When a purchase is completed, JVZoo sends an IPN notification to TrackPlay
+- The sale is attributed to the video session that drove the conversion

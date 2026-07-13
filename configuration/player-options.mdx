@@ -1,6 +1,8 @@
 ---
 title: "Player Options"
 description: "Configuration options that affect player behavior and available features"
+icon: "sliders"
+sidebarTitle: "Player options"
 ---
 
 TrackPlay offers extensive customization options configured through your dashboard. Understanding these options helps you build integrations that work with any player configuration.
@@ -43,7 +45,7 @@ Custom thumbnail images displayed when autoplay is disabled or video is paused.
 4. Deploy changes to make thumbnails live
 
 **Impact on Integration:**
-- Thumbnails display when `autoplay` is disabled and video hasn't started
+- Thumbnails display when `autoplay` is disabled and video has not started
 - Automatically adapts to video orientation (landscape/portrait)
 - `thumbnail` overlay can be triggered programmatically
 - Works seamlessly with continue watching and pause menu features
@@ -90,7 +92,7 @@ Customizes how video progress is displayed.
 **Impact on Integration:**
 - Progress visualization affects user engagement
 - Smart progress may show different completion percentages
-- Custom styling doesn't affect `time` event data
+- Custom styling does not affect `time` event data
 
 ## Functional Features
 
@@ -99,7 +101,7 @@ Allows users to resume videos from where they left off.
 
 **Configuration Options:**
 - **Enable/disable** continue watching
-- **Minimum watch time** threshold (how long before it's considered "watched")
+- **Minimum watch time** threshold (how long before it is considered "watched")
 - **Custom templates** for continue watching overlay
 - **Continue/restart button** styling and behavior
 
@@ -204,7 +206,7 @@ Tracks user interactions with the page.
 
 **Impact on Integration:**
 - These interactions are tracked automatically
-- Not available as player events (they're tracked separately)
+- Not available as player events (they are tracked separately)
 - Use `data-trackplay` attributes for targeted tracking
 
 ## Configuration Dependencies
@@ -269,8 +271,18 @@ document.addEventListener('TrackPlayReady', function (e) {
 
 ## Related Documentation
 
-- **[Event Setup](/configuration/event-setup)** - Configuring timed events and pixels
-- **[Templates & Styling](/configuration/templates-styling)** - Customizing appearance
-- **[Video Events](/events/video-events)** - Core playback events
-- **[User Events](/events/user-events)** - Interface interaction events
+<CardGroup cols={2}>
+  <Card title="Timed CTAs and pixels" icon="bullseye" href="/player/cta-and-timing">
+    Reveal the buy button at the exact second. Fire your pixel at 75% watched.
+  </Card>
+  <Card title="Player themes" icon="palette" href="/player/themes">
+    Five conversion themes, each a different layout.
+  </Card>
+  <Card title="Video events" icon="circle-play" href="/events/video-events">
+    Core playback events.
+  </Card>
+  <Card title="User events" icon="user" href="/events/user-events">
+    Interface interaction events.
+  </Card>
+</CardGroup>
 

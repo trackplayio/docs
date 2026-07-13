@@ -1,0 +1,270 @@
+---
+title: "Custom Events API"
+description: "Send an event that happened outside the player and land it on the viewer's session."
+icon: "bolt"
+sidebarTitle: "Custom Events API"
+---
+
+Something happened that the player never saw. A lead form was filled in. A quiz was
+completed. An upsell was accepted three pages later. Send it to TrackPlay and it lands on
+the same session as the play, so you can ask the only question that matters: **did the
+people who did this buy?**
+
+<Note>
+  A custom event is **not** a conversion. `value` is reported on its own (count, sum,
+  rate) and never feeds revenue, ROAS, EPC or RPV. Money goes through the
+  [Conversions API](/api-reference/conversions).
+</Note>
+
+## Two ways in
+
+<Tabs>
+  <Tab title="From the browser">
+    No token. The page already has a session, so the player sends the event for you.
+    Use this for anything that happens on the page.
+
+    **The event name must be declared first.** See [Declare the event
+    name](#declare-the-event-name) below. An undeclared name is rejected.
+
+    On a page **with** a TrackPlay player:
+
+    ```js
+    window.trackplay.track('quiz_completed', { value: 10, plan: 'pro' });
+    ```
+
+    On a page **without** a player, load the standalone script:
+
+    ```html
+    <script src="https://scripts.trackplay.io/tp-events.js"
+            data-workspace="YOUR_WORKSPACE_CODE" async></script>
+    ```
+
+    ```js
+    tp('event', 'quiz_completed', { value: 10, plan: 'pro' });
+    ```
+
+    `value` is the numeric value. Every other key becomes a property.
+  </Tab>
+
+  <Tab title="From your backend">
+    A scoped token, server to server. Use this when the event happens where the browser
+    is not present: a webhook from your cart, a CRM automation, a nightly job.
+
+    ```bash
+    curl https://e.trackplay.io/v1/event \
+      -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "event": "quiz_completed",
+        "session_id": "3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22",
+        "value": 10,
+        "event_id": "quiz_10482",
+        "properties": { "plan": "pro" }
+      }'
+    ```
+
+    Needs a token with the `events:write` scope. See
+    [Authentication](/api-reference/authentication).
+  </Tab>
+</Tabs>
+
+## Declare the event name
+
+Before the **browser** can send an event, the name has to exist as a custom metric.
+
+<Steps>
+  <Step title="Open custom metrics">
+    Go to **Analytics → Custom metrics** in your workspace.
+  </Step>
+  <Step title="Add the metric">
+    Create a metric on the **custom** event and give it the exact name you will send,
+    e.g. `quiz_completed`.
+  </Step>
+</Steps>
+
+<Warning>
+  An undeclared name sent from the browser is **rejected**, not quietly stored. This is
+  deliberate: the browser path is untrusted, and letting any page mint new event names
+  would let a stranger fill your reports with junk.
+</Warning>
+
+The backend API does not require this: a token is already proof of trust. It does still
+enforce the [name cap](#keep-the-name-set-small).
+
+## Getting the session
+
+The whole point is landing the event on a real viewer. Pass whichever of these you have.
+TrackPlay tries them in order and stops at the first hit.
+
+<Steps>
+  <Step title="session_id (best)">
+    Read it straight from the player and forward it to your backend:
+
+    ```js
+    const sessionId = window.trackplay.getSessionId();
+    ```
+
+    This is exactly how conversion postbacks already attribute a sale.
+  </Step>
+  <Step title="device_id, then profile_id">
+    Fallbacks when you have no session. `window.trackplay.getDeviceId()`.
+  </Step>
+  <Step title="email or external_id">
+    Resolved through the identity graph. Only matches if that identity was linked to a
+    viewer earlier, for example a lead they submitted on a previous visit. Email is
+    hashed on arrival and never stored raw.
+  </Step>
+</Steps>
+
+The response tells you which one worked:
+
+```json
+{ "ok": true, "event": "quiz_completed", "event_id": "quiz_10482",
+  "attributed": true, "matched_by": "session_id" }
+```
+
+### When nothing matches
+
+You get **`202`** and `"attributed": false`.
+
+The event is still recorded. It lands in the Unattributed bucket, with no session identity
+attached at all. It is never dropped, and never guessed at. A fabricated session would
+corrupt your traffic sources and affiliate attribution, which is worse than an honest gap.
+
+<Tip>
+  A `202` means your integration is not passing a resolvable identifier. It is a signal
+  to fix the plumbing, not a failure to retry. Retrying the same payload will produce the
+  same `202`.
+</Tip>
+
+## Do not double count
+
+Send an **`event_id`**. It is your idempotency key: a retry carrying the same `event_id`
+collapses into the same row rather than counting twice.
+
+<CodeGroup>
+
+```bash curl
+curl https://e.trackplay.io/v1/event \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "event": "lead_captured", "email": "buyer@example.com", "event_id": "lead_88213" }'
+```
+
+```js Node
+await fetch('https://e.trackplay.io/v1/event', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    event: 'lead_captured',
+    email: 'buyer@example.com',
+    event_id: 'lead_88213',   // your own id — makes the retry safe
+  }),
+});
+```
+
+```php PHP
+$ch = curl_init('https://e.trackplay.io/v1/event');
+curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+        'Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+        'Content-Type: application/json',
+    ],
+    CURLOPT_POSTFIELDS => json_encode([
+        'event' => 'lead_captured',
+        'email' => 'buyer@example.com',
+        'event_id' => 'lead_88213',
+    ]),
+]);
+$response = curl_exec($ch);
+```
+
+</CodeGroup>
+
+<Warning>
+  Without an `event_id`, delivery is **at-least-once**: if your job retries, the event is
+  counted twice. Use your own primary key: an order ID, a submission ID, anything
+  stable for that one real-world event.
+</Warning>
+
+Deduplication holds for **24 hours** from the first time we see an `event_id`. A
+duplicate arriving later than that (far outside any sane retry schedule) will count
+again.
+
+## Keep the name set small
+
+`quiz_completed` is an event name. `quiz_completed_8f21ba` is a bug.
+
+A workspace may use **100 distinct event names**. Past that, new names are rejected with
+`422 TOO_MANY_EVENT_NAMES`. Names are a grouping dimension across tens of millions of
+rows; an integration that mints one per visitor destroys every report built on them.
+
+<Check>
+  Put the varying part in `properties`, never in the name:
+  `{"event": "quiz_completed", "properties": {"quiz_id": "8f21ba"}}`
+</Check>
+
+Names are normalised on arrival: lowercased, reduced to `[a-z0-9_-]`, truncated to 64
+characters. `Quiz Completed!` and `quiz completed` both become `quiz_completed`.
+
+## Rate limits
+
+| Limit | Value |
+| --- | --- |
+| Per workspace | 600 events per minute |
+| Per IP | 120 requests per minute |
+| Properties per event | 20 (keys ≤ 40 chars, values ≤ 100 chars) |
+| `value` range | ±1,000,000,000 |
+
+Over the limit returns `429 RATE_LIMITED`. Back off and retry: with your `event_id`, the
+retry is free.
+
+## Errors
+
+<AccordionGroup>
+  <Accordion title="400: INVALID_PAYLOAD">
+    A field failed validation, or you sent a field we do not know. Unknown fields are
+    rejected rather than ignored, so a typo like `sessionId` fails loudly instead of
+    silently costing you attribution.
+  </Accordion>
+  <Accordion title="400: INVALID_EVENT_NAME">
+    `event` contained nothing usable after normalisation (e.g. `"!!!"`). We reject rather
+    than invent a name for you.
+  </Accordion>
+  <Accordion title="403: INSUFFICIENT_SCOPE">
+    Your token lacks `events:write`. The legacy `tp_` workspace key always lands here: it
+    is rejected on purpose. See [Authentication](/api-reference/authentication).
+  </Accordion>
+  <Accordion title="422: TOO_MANY_EVENT_NAMES">
+    You have hit the 100-name cap. The response tells you how many names are in use.
+  </Accordion>
+  <Accordion title="429: RATE_LIMITED">
+    Too many events for this workspace or IP.
+  </Accordion>
+  <Accordion title="500: WRITE_FAILED">
+    We could not write the event. Retry with the same `event_id`.
+  </Accordion>
+  <Accordion title="503: AUTH_UNAVAILABLE">
+    Token verification is temporarily unavailable. Your token is fine. Retry shortly.
+  </Accordion>
+</AccordionGroup>
+
+## Where the data shows up
+
+Custom events land alongside player events on the same session. Once a name has been
+declared as a custom metric in **Analytics → Custom metrics**, you can:
+
+- chart it on the video's metric cards,
+- use it as the **goal metric of a split test**, so the winner is decided on your event
+  rather than a generic play,
+- segment retention by whether the viewer fired it.
+
+<Note>
+  A backend event whose name has never been declared as a custom metric is still stored,
+  but nothing in the dashboard is grouped by it yet. Declare the metric to see it.
+</Note>

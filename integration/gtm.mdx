@@ -1,0 +1,76 @@
+---
+title: Google Tag Manager
+description: Inject GTM on your video pages and fire dataLayer events for all TrackPlay player interactions.
+icon: "google"
+sidebarTitle: "Google Tag Manager"
+---
+
+Add your GTM Container ID to automatically inject Google Tag Manager on every page your TrackPlay videos are embedded on.
+
+## Overview
+
+The GTM integration lets you:
+- Inject GTM on any page where your TrackPlay video is embedded
+- Fire `dataLayer` events for all key player interactions
+- Trigger GA4, Facebook Pixel, TikTok Pixel, or any other tag from a single TrackPlay integration
+
+## Setup Instructions
+
+### Step 1: Get Your GTM Container ID
+
+1. Log into [Google Tag Manager](https://tagmanager.google.com)
+2. Select your container. The ID is shown at the top right, e.g. `GTM-XXXXXXX`.
+
+### Step 2: Connect in TrackPlay
+
+1. Go to **Integrations** in your TrackPlay dashboard
+2. Find **Google Tag Manager** and click **Connect**
+3. Enter your Container ID (e.g. `GTM-XXXXXXX`)
+4. Click **Save**. The integration is active immediately.
+
+## Events Fired to dataLayer
+
+TrackPlay fires these events to `window.dataLayer`:
+
+| Event | When |
+|-------|------|
+| `trackplay_play` | Video starts playing |
+| `trackplay_pause` | Video is paused |
+| `trackplay_progress_25` | Viewer reaches 25% |
+| `trackplay_progress_50` | Viewer reaches 50% |
+| `trackplay_progress_75` | Viewer reaches 75% |
+| `trackplay_complete` | Video finishes |
+| `trackplay_conversion` | A conversion is recorded |
+| `trackplay_cta_click` | Viewer clicks a CTA overlay |
+
+Each event includes a `trackplay` property with context data (e.g. `videoCode`).
+
+## Using Events in GTM
+
+### Example: Fire GA4 event on video play
+
+1. In GTM, create a new **Trigger**
+   - Type: **Custom Event**
+   - Event name: `trackplay_play`
+2. Create a new **Tag**
+   - Type: **Google Analytics: GA4 Event**
+   - Event name: `video_start`
+   - Trigger: the trigger you just created
+3. Publish your container
+
+### Example: Fire Facebook Pixel on conversion
+
+1. Create a trigger for Custom Event `trackplay_conversion`
+2. Create a Facebook Pixel tag that fires `Purchase` on that trigger
+3. Publish your container
+
+## Troubleshooting
+
+### GTM not injecting
+- Verify the Container ID starts with `GTM-` and is correct
+- Check that the integration shows **Active** status in TrackPlay
+- Open the browser console. You should see the GTM snippet loaded.
+
+### Events not firing
+- Use GTM Preview mode to inspect the dataLayer
+- Confirm your TrackPlay video is loading correctly on the page

@@ -1,0 +1,507 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TrackPlay API",
+    "description": "Send conversions and events to TrackPlay, and read them back. Authenticated with scoped tokens you mint in the dashboard.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://app.trackplay.io/api/v1",
+      "description": "App API. Conversions, videos, webhooks."
+    },
+    {
+      "url": "https://e.trackplay.io",
+      "description": "Events API. High-volume event ingest."
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/conversions": {
+      "post": {
+        "operationId": "createConversion",
+        "summary": "Record a conversion",
+        "description": "Credit a sale to the video that caused it. Send `session_code` from the player so the conversion joins the play that produced it. Without it, the sale is recorded but cannot be attributed to a viewer.\n\nRequires a token with the `conversions:write` scope.\n\nServer: `https://app.trackplay.io/api/v1`",
+        "tags": [
+          "Conversions"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set. Send one on every call. A retried payment webhook without it will double count the sale."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversionRequest"
+              },
+              "examples": {
+                "sale": {
+                  "summary": "A sale attributed to a viewer's session",
+                  "value": {
+                    "video_code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34",
+                    "session_code": "3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22",
+                    "conversion_id": "order_10482",
+                    "conversion_value": 297.0,
+                    "conversion_currency": "USD",
+                    "conversion_product_name": "Pro Annual",
+                    "conversion_customer_email": "buyer@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Conversion recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "recorded": {
+                      "type": "boolean",
+                      "examples": [
+                        true
+                      ]
+                    },
+                    "conversion_id": {
+                      "type": "string",
+                      "examples": [
+                        "order_10482"
+                      ]
+                    },
+                    "video_code": {
+                      "type": "string"
+                    },
+                    "attributed_to_split_test": {
+                      "type": "boolean",
+                      "description": "True when the conversion was credited to a split-test arm."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or revoked token."
+          },
+          "403": {
+            "description": "Token does not carry the `conversions:write` scope."
+          },
+          "404": {
+            "description": "No video with that `video_code` exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "examples": [
+                        "Video not found in this workspace."
+                      ]
+                    },
+                    "video_code": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed."
+          },
+          "429": {
+            "description": "Rate limited. The write limit is 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/v1/event": {
+      "post": {
+        "operationId": "createEvent",
+        "summary": "Send a custom event",
+        "description": "Record something the player never saw (a lead form, a quiz completion, an upsell) and land it on the viewer's session.\n\nA custom event is not a conversion. `value` is reported on its own and never feeds revenue, ROAS, EPC, or RPV. Send money through [Record a conversion](/api-reference/conversions/create) instead.\n\nRequires a token with the `events:write` scope. The legacy `tp_` workspace key is rejected here.\n\nServer: `https://e.trackplay.io`",
+        "tags": [
+          "Events"
+        ],
+        "servers": [
+          {
+            "url": "https://e.trackplay.io"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomEventRequest"
+              },
+              "examples": {
+                "attributed": {
+                  "summary": "Event tied to a known session",
+                  "value": {
+                    "event": "quiz_completed",
+                    "session_id": "3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22",
+                    "value": 10,
+                    "event_id": "quiz_10482",
+                    "properties": {
+                      "plan": "pro",
+                      "score": "8"
+                    }
+                  }
+                },
+                "identity": {
+                  "summary": "No session. Resolve the viewer by email",
+                  "value": {
+                    "event": "lead_captured",
+                    "email": "buyer@example.com",
+                    "event_id": "lead_88213"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recorded and attributed to a session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomEventResponse"
+                },
+                "examples": {
+                  "attributed": {
+                    "value": {
+                      "ok": true,
+                      "event": "quiz_completed",
+                      "event_id": "quiz_10482",
+                      "attributed": true,
+                      "matched_by": "session_id"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Recorded, but no session matched. The event is kept in the Unattributed bucket. It is never dropped, and never guessed at. If you see this, the identifier you sent did not resolve to a viewer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomEventResponse"
+                },
+                "examples": {
+                  "unattributed": {
+                    "value": {
+                      "ok": true,
+                      "event": "quiz_completed",
+                      "event_id": "quiz_10482",
+                      "attributed": false,
+                      "matched_by": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`INVALID_PAYLOAD`: a field failed validation, or an unknown field was sent.\n\n`INVALID_EVENT_NAME`: `event` contained no usable characters after normalization.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent.\n\n`INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `events:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`TOO_MANY_EVENT_NAMES`: this workspace has used its 100 distinct event names. Event names must be a small fixed set. Put the varying part in `properties`, not in the name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`: 600 events per minute per workspace, or 120 per minute per IP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`WRITE_FAILED`: the event could not be written. Retry with the same `event_id`. The retry will not double count.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "`AUTH_UNAVAILABLE`: token verification is temporarily unavailable. This is never a rejection of your token. Retry shortly.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "A scoped token minted in **Settings → API tokens**. Send it as `Authorization: Bearer tplt_…` or `X-API-Key: tplt_…`."
+      }
+    },
+    "schemas": {
+      "ConversionRequest": {
+        "type": "object",
+        "required": [
+          "video_code"
+        ],
+        "properties": {
+          "video_code": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "The video the sale is credited to. Required. A conversion with no video cannot be attributed to anything."
+          },
+          "session_code": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "The viewer's session. Optional, but without it the sale cannot be joined to the play that caused it, and your play-to-sale rate stays blind to it."
+          },
+          "event": {
+            "type": "string",
+            "maxLength": 64,
+            "default": "conversion",
+            "description": "What happened. Defaults to `conversion`."
+          },
+          "conversion_id": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Your order ID. Defaults to a generated UUID if omitted."
+          },
+          "conversion_value": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Sale amount."
+          },
+          "conversion_currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3,
+            "description": "Three-letter currency code, e.g. `USD`."
+          },
+          "conversion_product_code": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "conversion_product_name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "conversion_customer_email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255
+          },
+          "conversion_customer_name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "conversion_customer_phone": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "conversion_data": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Any extra fields you want to keep with the sale."
+          },
+          "is_test": {
+            "type": "boolean",
+            "description": "Marks the row as a test so it can be excluded from reporting."
+          },
+          "split_test_id": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Send with `split_test_variation_id` or not at all. One without the other cannot identify an arm, and a half-attributed row looks valid while being wrong."
+          },
+          "split_test_variation_id": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Send with `split_test_id` or not at all."
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the sale happened. Defaults to now."
+          }
+        }
+      },
+      "CustomEventRequest": {
+        "type": "object",
+        "required": [
+          "event"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "event": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "The event name, e.g. `quiz_completed`. Lowercased and reduced to `[a-z0-9_-]`, then truncated to 64 characters. A workspace may use 100 distinct names, so keep the set small and fixed.",
+            "examples": [
+              "quiz_completed"
+            ]
+          },
+          "session_id": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "The viewer's session. This is the best identifier to send. Read it from the player with `window.trackplay.getSessionId()`."
+          },
+          "device_id": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Fallback if you have no session."
+          },
+          "profile_id": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Fallback if you have no session or device."
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Identity fallback. Hashed on arrival and never stored raw."
+          },
+          "external_id": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Identity fallback. Your own customer ID, if you have already linked it."
+          },
+          "value": {
+            "type": "number",
+            "description": "A number to report on this event. **Not revenue.** It never feeds revenue, ROAS, EPC, or RPV. Clamped to plus or minus 1,000,000,000."
+          },
+          "video_code": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Credit the event to a specific video. Wins over the session's last video."
+          },
+          "event_id": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Your idempotency key. Send one. A retry with the same `event_id` collapses into the same row instead of double counting. Omit it and delivery is at-least-once, so duplicates are possible."
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Up to 20 extra key/value pairs. Keys are capped at 40 characters, values at 100. This is where varying data belongs. Never in the event name."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the event happened. Defaults to arrival time."
+          }
+        }
+      },
+      "CustomEventResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "event": {
+            "type": "string",
+            "description": "The normalized event name that was stored."
+          },
+          "event_id": {
+            "type": "string",
+            "description": "Your `event_id`, or the one generated for you."
+          },
+          "attributed": {
+            "type": "boolean",
+            "description": "Whether the event landed on a viewer's session."
+          },
+          "matched_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "session_id",
+              "device_id",
+              "profile_id",
+              "identity",
+              null
+            ],
+            "description": "Which identifier resolved the viewer. `null` when nothing matched."
+          }
+        }
+      },
+      "EventError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "A stable error code, e.g. `INSUFFICIENT_SCOPE`."
+          },
+          "message": {
+            "type": "string",
+            "description": "What went wrong, in plain English."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,73 +1,59 @@
 ---
-title: Introduction
-description: "Welcome to the comprehensive TrackPlay Player documentation"
+title: "TrackPlay Documentation"
+description: "Everything you need to make a video sell: the player, the analytics, and the APIs that close the loop."
+icon: "house"
+sidebarTitle: "Introduction"
 ---
 
-This comprehensive guide will help you integrate and customize TrackPlay's powerful video player. Whether you're just getting started or implementing advanced features, you'll find everything you need here.
+Your video host counts plays. TrackPlay counts buyers.
+
+These docs cover the player you embed, the data it sends back, and the APIs you use to
+tie a play to a sale.
 
 <CardGroup cols={2}>
-  <Card
-    title="Quick Start"
-    icon="rocket"
-    href="/quickstart"
-  >
-    Get up and running with TrackPlay player in minutes
+  <Card title="Quick start" icon="rocket" href="/get-started/quick-start">
+    One embed on any page. First video live in minutes.
   </Card>
-  <Card
-    title="Player Options"
-    icon="cog"
-    href="/configuration/player-options"
-  >
-    Customize player behavior, styling, and features
+  <Card title="Player options" icon="sliders" href="/configuration/player-options">
+    Autoplay, timed CTAs, watch gates, lead forms.
+  </Card>
+  <Card title="API reference" icon="code" href="/api-reference/authentication">
+    Send conversions and events. Scoped tokens, real error codes.
+  </Card>
+  <Card title="Integrations" icon="plug" href="/integration/configuration">
+    ClickBank, BuyGoods, Digistore24, ThriveCart and more.
   </Card>
 </CardGroup>
 
-## Essential Features
-
-Master the core functionality and security features of TrackPlay player.
+## Make the video sell
 
 <CardGroup cols={2}>
-  <Card
-    title="Event Integration"
-    icon="chart-line"
-    href="/events/video-events"
-  >
-    Track video events and integrate with your analytics platform
+  <Card title="Timed CTAs and pixels" icon="bullseye" href="/player/cta-and-timing">
+    Reveal the buy button at the exact second. Fire your pixel at 75% watched, not on
+    page load.
   </Card>
-  <Card
-    title="Advanced Integration"
-    icon="code"
-    href="/integration/advanced-integration"
-  >
-    Deep integration patterns and customization techniques
+  <Card title="Player themes" icon="palette" href="/player/themes">
+    Five conversion themes. Each is a different layout, not a different colour.
   </Card>
-  <Card
-    title="Domain Whitelist"
-    icon="shield-check"
-    href="/configuration/domain-whitelist"
-  >
-    Control which domains can embed and stream your videos
+  <Card title="Split testing" icon="flask" href="/split-tests/overview">
+    Winner picked on real sales, with a real significance test.
   </Card>
-  <Card
-    title="Timed Events"
-    icon="clock"
-    href="/events/timed-events"
-  >
-    Trigger actions at specific video timestamps
+  <Card title="Content protection" icon="shield-check" href="/configuration/content-protection">
+    Signed segments, domain lock, and a decoy for scrapers.
   </Card>
 </CardGroup>
 
-## What's Inside
+## Close the loop
 
-This documentation covers comprehensive player integration and advanced features including:
-
-- **Player Integration**: Embedding TrackPlay videos in your website
-- **Event Handling**: Video events, user interactions, and analytics
-- **Customization**: Player styling, autoplay, and behavior options
-- **Security**: Domain whitelisting and content protection
-- **Advanced Features**: Timed events, continue watching, and turbo mode
-- **Development**: Testing patterns and debugging techniques
+<CardGroup cols={2}>
+  <Card title="Custom Events API" icon="bolt" href="/api-reference/custom-events">
+    Send an event that happened outside the player and land it on the viewer's session.
+  </Card>
+  <Card title="Conversions API" icon="cart-shopping" href="/api-reference/conversions">
+    Post the sale back and credit it to the video that caused it.
+  </Card>
+</CardGroup>
 
 <Note>
-Ready to get started? Jump to our [Quick Start guide](/quickstart) for step-by-step instructions on integrating your first TrackPlay video.
+  Your data is yours. Export it, push it through webhooks, or query the API.
 </Note>

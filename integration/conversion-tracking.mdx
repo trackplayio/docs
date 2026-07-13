@@ -1,3 +1,9 @@
+---
+title: "Conversion Tracking"
+icon: "cart-shopping"
+sidebarTitle: "Conversion tracking"
+---
+
 This guide explains how TrackPlay's conversion tracking system works and how to optimize it for maximum accuracy.
 
 ## How Conversion Tracking Works
@@ -36,7 +42,7 @@ This ensures tracking works even with dynamically loaded content.
 
 ## Supported Conversion Data
 
-TrackPlay captures comprehensive conversion information:
+TrackPlay records the following with every conversion:
 
 ### Basic Conversion Fields
 - **Conversion ID**: Unique identifier from the payment processor
@@ -113,7 +119,7 @@ TrackPlay captures comprehensive conversion information:
 - Avoid URL redirects that might break tracking
 
 ### 3. Integration Configuration
-- Choose tracking parameters that don't conflict with your existing campaigns
+- Choose tracking parameters that do not conflict with your existing campaigns
 - Test with small transactions before full deployment
 - Monitor integration status regularly
 
@@ -127,7 +133,7 @@ TrackPlay captures comprehensive conversion information:
 ### No Conversions Showing
 
 **Check Integration Status**
-- Verify integration shows "Ready to use"
+- Verify integration shows **Active**
 - Ensure all required parameters are configured
 - Confirm postback URLs are set in payment processor
 
@@ -158,7 +164,7 @@ TrackPlay captures comprehensive conversion information:
 **Wrong Video Attribution**
 - Check that each video has a unique video code
 - Verify videos are properly configured in TrackPlay
-- Ensure session tracking isn't being shared across videos
+- Ensure session tracking is not being shared across videos
 
 **Cross-Domain Problems**
 - Review your domain configuration
@@ -196,7 +202,7 @@ TrackPlay captures comprehensive conversion information:
 
 ### Payment Processor Integration
 - All conversion data comes directly from payment processors
-- TrackPlay doesn't store sensitive payment information
+- TrackPlay does not store sensitive payment information
 - Integration follows PCI compliance standards
 
 ## Support and Resources

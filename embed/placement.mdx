@@ -1,0 +1,172 @@
+---
+title: "Where to paste the embed"
+description: "One snippet on any page: ClickFunnels, GoHighLevel, Kajabi, Wix, Webflow or your own build."
+icon: "code"
+sidebarTitle: "Placement"
+---
+
+The code is the same everywhere. Only the place you paste it changes.
+
+Every snippet below is generated for you: open your video, go to the **Embed** tab, and
+copy. Do not hand-write it.
+
+## The two shapes
+
+<Tabs>
+  <Tab title="Script embed">
+    The default. Self-contained, mounts where you put it. Use it when your builder lets
+    you drop a raw HTML block into the page body.
+
+    ```html
+    <div class="video" id="VIDEO_CODE"
+         style="position:relative;width:100%;aspect-ratio:16/9;margin:0 auto;">
+      <!-- poster injected by the Embed tab -->
+    </div>
+    <script type="text/javascript">
+      let trackplay = document.createElement('script');
+      trackplay.src = 'https://scripts.trackplay.io/WORKSPACE_CODE/VIDEO_CODE.js';
+      trackplay.async = !0, document.head.appendChild(trackplay);
+    </script>
+    ```
+  </Tab>
+
+  <Tab title="Loader embed">
+    A bare container plus one external loader script. Use it for lazy-loading, for a
+    lightbox, for any builder that strips inline `<script>`, and for **any video in a
+    split test**, because the loader is what picks the arm.
+
+    ```html
+    <div data-trackplay-workspace="WORKSPACE_CODE"
+         data-trackplay-video="VIDEO_CODE"
+         data-trackplay-lazy="true"
+         data-trackplay-poster="POSTER_URL"
+         style="position:relative;width:100%;aspect-ratio:16/9;margin:0 auto;"></div>
+    <script src="https://scripts.trackplay.io/embed/loader.v1.js" async></script>
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  If your video is in an **active split test**, copy the snippet from the Embed tab and
+  paste it as-is. A hand-edited script embed pinned to one video code will not rotate
+  arms. Every viewer sees the same one and your test measures nothing.
+</Warning>
+
+<Tip>
+  The Embed tab also gives you a **head code** block: `preload` and `dns-prefetch` hints.
+  Paste it into your page `<head>` if your builder has one. It shortens time to first
+  frame, and a slow first frame kills the sale before the hook lands.
+</Tip>
+
+## Per-builder
+
+<AccordionGroup>
+  <Accordion title="ClickFunnels 2.0" icon="funnel-dollar">
+    Row or Element → **Custom JS/HTML**.
+
+    Head code goes in **Settings → Tracking Code → Head**.
+
+    ClickFunnels wraps the element in its own container, so keep the snippet's
+    `width:100%`.
+  </Accordion>
+
+  <Accordion title="ClickFunnels Classic">
+    Add Element → **Custom HTML/JavaScript**.
+
+    If the step strips your `<script>`, switch to the loader embed: ClickFunnels usually
+    allows a single external script.
+  </Accordion>
+
+  <Accordion title="GoHighLevel">
+    Funnels and websites: Element → **Custom Code / HTML**.
+
+    Head code goes in **Funnel/Website Settings → Head Tracking Code**.
+
+    GHL **email and SMS** cannot run JavaScript. Link to a landing page instead of trying
+    to embed the player in the message.
+  </Accordion>
+
+  <Accordion title="Kajabi">
+    Page section → **Custom Code** block, or **Settings → Code** for site-wide head code.
+
+    Kajabi sandboxes some blocks. If the player does not mount, switch to the loader embed.
+  </Accordion>
+
+  <Accordion title="Wix">
+    Prefer **Settings → Custom Code → Body-end**. That gives you a full-width player.
+
+    Wix's **Embed HTML** widget runs inside a sandboxed iframe. Tracking still fires, but
+    the iframe pins the height and you lose responsive sizing.
+  </Accordion>
+
+  <Accordion title="Squarespace">
+    **Code Block** on the page, or **Settings → Advanced → Code Injection** for the head.
+
+    Code Blocks only allow `<script>` on Business plans and above. On a lower plan, link
+    to a hosted page instead.
+  </Accordion>
+
+  <Accordion title="Webflow">
+    Add → **Embed** (the HTML Embed component). Head code goes in **Project Settings →
+    Custom Code → Head**.
+
+    Webflow's Embed defaults to `display:inline-block`. Put it in a full-width div.
+  </Accordion>
+
+  <Accordion title="Elementor">
+    Use the **TrackPlay block or shortcode** from the [WordPress
+    plugin](/embed/wordpress), not an HTML widget. The block stays split-test-aware and
+    survives editor re-saves; a pasted raw embed does neither.
+  </Accordion>
+
+  <Accordion title="WordPress (no builder)">
+    Use the [plugin](/embed/wordpress) shortcode:
+
+    ```
+    [trackplay video="VIDEO_CODE" workspace="WORKSPACE_CODE" width="100%" aspect="16:9"]
+    ```
+
+    Or paste the video's share URL on its own line and let oEmbed handle it.
+  </Accordion>
+
+  <Accordion title="Unbounce, Instapage, Leadpages">
+    **Custom HTML / Embed** widget.
+
+    These builders often defer scripts. If the player mounts late, the loader embed with
+    `data-trackplay-lazy` is more reliable.
+  </Accordion>
+</AccordionGroup>
+
+## Which snippet do I want?
+
+| Situation | Use |
+| --- | --- |
+| Full-width VSL on a normal page | Script embed |
+| Long sales page, video below the fold | Lazy loader embed |
+| A "watch the video" button | Lightbox |
+| Any split test | Whatever the Embed tab shows (it is already the loader) |
+| WordPress | The plugin block or shortcode, never raw HTML |
+
+## When it does not work
+
+<AccordionGroup>
+  <Accordion title="The player does not appear at all">
+    Your builder stripped the inline `<script>`. Switch to the loader embed: an external
+    script survives most sanitisers.
+  </Accordion>
+  <Accordion title="It is letterboxed or the wrong size">
+    A parent column is forcing a fixed height. The container is `width:100%` with an
+    `aspect-ratio`; make sure nothing above it overrides the height.
+  </Accordion>
+  <Accordion title="Analytics show 0 plays">
+    Almost always a split test with a hand-edited embed pinned to a child video. Re-copy
+    the snippet from the Embed tab.
+  </Accordion>
+  <Accordion title="Two players on one page fight each other">
+    Each needs its own container `id` and `data-trackplay-video`. Do not paste the same
+    snippet twice.
+  </Accordion>
+  <Accordion title="Slow first frame">
+    Add the head code block.
+  </Accordion>
+</AccordionGroup>

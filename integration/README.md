@@ -28,6 +28,9 @@ This directory contains comprehensive user documentation for TrackPlay's integra
 ### Enhancement Platforms
 1. **ElasticFunnels.io** - Funnel optimization that enhances other integrations
 
+### AI & Media
+1. **[ElevenLabs & AI Segments](./elevenlabs-ai-segments.mdx)** - ElevenLabs API key and time-based personalized TTS in the player
+
 ## Key Features Documented
 
 ### Automatic Tracking

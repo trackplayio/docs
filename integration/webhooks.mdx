@@ -1,0 +1,121 @@
+---
+title: "Webhooks"
+description: "Signed, retried, and yours to consume. Every event TrackPlay sees, pushed to your endpoint."
+icon: "webhook"
+sidebarTitle: "Webhooks"
+---
+
+Export it, send it through webhooks, or query the API. Your attribution data is yours.
+
+**Settings → Webhooks.**
+
+## Subscribe
+
+<Steps>
+  <Step title="Add the endpoint">
+    Click **New webhook** and paste your URL.
+  </Step>
+  <Step title="Pick the events">
+    Tick the events you want, or **All events**.
+  </Step>
+  <Step title="Save the secret">
+    The signing secret is shown **once**. Copy it. You need it to verify deliveries.
+  </Step>
+  <Step title="Test it">
+    Hit **Send test** and check it arrives.
+  </Step>
+</Steps>
+
+## Events
+
+| Event | Fires when |
+| --- | --- |
+| `conversion.created` | A sale is recorded, from a cart postback or the API |
+| `lead.captured` | Someone submits a lead form |
+| `play.milestone` | A viewer passes a watch milestone |
+| `cta.clicked` | A CTA is clicked |
+| `video.viewed` | A video is played |
+| `video.created` / `video.updated` / `video.deleted` | A video changes |
+| `split_test.winner_declared` | A split test gets a winner |
+| `webhook.test` | You clicked **Send test** |
+
+## Verify the signature
+
+Every delivery carries these headers:
+
+| Header | Contents |
+| --- | --- |
+| `X-Trackplay-Event` | The event name |
+| `X-Trackplay-Signature` | `t=<timestamp>,v1=<hmac>` |
+| `X-Trackplay-Timestamp` | Unix timestamp |
+| `X-Trackplay-Delivery` | A unique delivery ID |
+
+The signature is an HMAC-SHA256 over `<timestamp>.<raw body>`, keyed with your secret.
+
+<CodeGroup>
+
+```js Node
+import crypto from 'node:crypto';
+
+function verify(rawBody, header, secret) {
+  const parts = Object.fromEntries(
+    header.split(',').map(kv => kv.split('='))
+  );
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(`${parts.t}.${rawBody}`)
+    .digest('hex');
+
+  // Constant-time compare — a plain === leaks the secret one byte at a time.
+  return crypto.timingSafeEqual(
+    Buffer.from(expected),
+    Buffer.from(parts.v1),
+  );
+}
+```
+
+```php PHP
+function verify(string $rawBody, string $header, string $secret): bool
+{
+    parse_str(str_replace(',', '&', $header), $parts);
+
+    $expected = hash_hmac('sha256', $parts['t'] . '.' . $rawBody, $secret);
+
+    return hash_equals($expected, $parts['v1']);
+}
+```
+
+</CodeGroup>
+
+<Warning>
+  Sign against the **raw request body**, before any JSON parsing. Re-serialising the body
+  changes the bytes and the signature will never match.
+</Warning>
+
+<Tip>
+  Check the timestamp is recent (a few minutes at most) and reject anything older. A
+  valid signature on a replayed request is still a replayed request.
+</Tip>
+
+## Retries
+
+A delivery that fails is retried with exponential backoff, up to an hour between
+attempts. You can see every attempt under **Recent deliveries**, along with the HTTP
+status and when the next retry is due.
+
+Return a `2xx` quickly. Do the work afterwards: a slow endpoint reads as a failure and
+gets retried.
+
+## Rotating the secret
+
+**Roll secret** issues a new one. The old secret stops working immediately, so deploy the
+new one first if you cannot take the gap.
+
+## Zapier
+
+The **Zapier** integration uses the same machinery. Connect it with a scoped token
+carrying `webhooks:write`: mint one under [Settings → API
+tokens](/api-reference/authentication).
+
+Available triggers: new lead, new conversion, play milestone, split-test winner, CTA
+clicked, video viewed.

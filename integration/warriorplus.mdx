@@ -1,0 +1,29 @@
+---
+title: WarriorPlus
+description: Connect WarriorPlus to TrackPlay for automatic conversion tracking and affiliate link rewriting.
+icon: "cart-shopping"
+sidebarTitle: "WarriorPlus"
+---
+
+Connect your WarriorPlus vendor account to TrackPlay to automatically track affiliate sales and inject session IDs into offer links.
+
+## Setup Instructions
+
+### Step 1: Connect
+1. Go to **Integrations** → find **WarriorPlus** → click **Connect**
+
+### Step 2: Configure
+1. Select the tracking parameter (`aff_sub`, `aff_sub2`, or `aff_sub3`)
+2. Click **Save & Verify**
+
+### Step 3: Add Postback URL and Verify
+1. Copy the Postback URL from the setup modal
+2. In WarriorPlus: go to **Vendor → Offer → Postback URL**
+3. Paste the URL and save
+4. Trigger a test sale using the WarriorPlus test tool
+5. TrackPlay detects the test and marks the integration **Active**
+
+## How It Works
+- All `warriorplus.com` links on your page are automatically updated with the session ID
+- When a sale is completed, WarriorPlus sends a postback to TrackPlay
+- The sale is attributed to the video session that drove the conversion

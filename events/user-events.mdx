@@ -1,6 +1,7 @@
 ---
 title: "User Events"
 description: "Reference for user interface interaction events"
+icon: "user"
 ---
 
 Events that fire when users interact with the video player interface.
@@ -46,7 +47,7 @@ Fired when the video enters fullscreen mode.
 ```javascript
 player.on('enter-fullscreen', function (event) {
   console.log('Entered fullscreen at', event.detail.time);
-  // Hide elements that shouldn't show in fullscreen
+  // Hide elements that should not show in fullscreen
   document.querySelectorAll('.hide-on-fullscreen').forEach(el => {
     el.style.display = 'none';
   });

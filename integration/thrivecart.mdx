@@ -1,0 +1,29 @@
+---
+title: ThriveCart
+description: Connect ThriveCart to TrackPlay for automatic conversion tracking and session-based link rewriting.
+icon: "cart-shopping"
+sidebarTitle: "ThriveCart"
+---
+
+Connect your ThriveCart account to TrackPlay to automatically track sales and inject session IDs into checkout links.
+
+## Setup Instructions
+
+### Step 1: Connect
+1. Go to **Integrations** → find **ThriveCart** → click **Connect**
+
+### Step 2: Configure
+1. Select the tracking parameter (`affiliate_id`, `aff_sub`, or `utm_content`)
+2. Click **Save & Verify**
+
+### Step 3: Add Webhook and Verify
+1. Copy the Webhook URL from the setup modal
+2. In ThriveCart: go to **Product → Fulfillment → Webhook URL**
+3. Paste the URL and save
+4. Trigger a test order
+5. TrackPlay detects the test and marks the integration **Active**
+
+## How It Works
+- All `thrivecart.com` links on your page are automatically updated with the session ID
+- When a purchase is completed, ThriveCart sends a webhook to TrackPlay
+- The sale is attributed to the video session that drove the conversion

@@ -1,0 +1,76 @@
+---
+title: "WordPress plugin"
+description: "A block, a shortcode, and oEmbed. No raw HTML, no developer."
+icon: "wordpress"
+sidebarTitle: "WordPress"
+---
+
+Raw embeds and WordPress do not get along. The editor rewrites them. Plugins strip them. A
+pasted script survives exactly until someone re-saves the page.
+
+The plugin avoids all of it.
+
+## Install
+
+<Steps>
+  <Step title="Copy the plugin">
+    Copy the `trackplay/` folder into `wp-content/plugins/`.
+  </Step>
+  <Step title="Activate it">
+    In WP Admin, open **Plugins** and activate **TrackPlay Video**.
+  </Step>
+</Steps>
+
+Requires WordPress 5.9 or later, and PHP 7.4 or later.
+
+## Three ways to embed
+
+<Tabs>
+  <Tab title="Block">
+    In the block editor, add the **TrackPlay** block and paste your video code.
+
+    The editor shows a placeholder card, not a live player. That is deliberate. Loading the
+    real player inside the editor iframe would bypass the step that resolves split tests,
+    so what you saw in the editor would not be what your visitors get.
+
+    The published page renders the real thing.
+  </Tab>
+
+  <Tab title="Shortcode">
+    ```
+    [trackplay id="VIDEO_CODE"]
+    ```
+
+    With options:
+
+    ```
+    [trackplay id="VIDEO_CODE" width="100%" aspect_ratio="16:9"]
+    ```
+
+    | Attribute | Default | Notes |
+    | --- | --- | --- |
+    | `id` | none | Your video code. `video` also works. |
+    | `width` | `100%` | |
+    | `aspect_ratio` | `16:9` | Also `4:3`, `9:16`, `1:1`. `aspect` also works. |
+  </Tab>
+
+  <Tab title="oEmbed">
+    Paste your video's share URL on its own line in the editor. WordPress recognises
+    TrackPlay URLs and embeds the player for you.
+  </Tab>
+</Tabs>
+
+## Why it is not an iframe
+
+The plugin does not render an iframe. It asks TrackPlay what to embed, caches the answer
+for an hour, and injects the loader.
+
+That indirection is the whole point. It is what lets a video in a split test resolve to
+the right arm for each visitor, and stay on that arm when they come back. An earlier
+version hardcoded an iframe, pinned every viewer to a single arm, and quietly broke every
+test running through WordPress.
+
+<Note>
+  Using Elementor? Use the TrackPlay block or shortcode there too, not an HTML widget.
+  Same reason.
+</Note>

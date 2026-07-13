@@ -1,6 +1,7 @@
 ---
 title: "Video Events"
 description: "Reference for all video playback events"
+icon: "circle-play"
 ---
 
 # Video Events
@@ -154,7 +155,7 @@ Fired when video enters fullscreen mode.
 ```javascript
 player.on('enter-fullscreen', function (event) {
   console.log('Entered fullscreen at', event.detail.time);
-  // Hide elements that shouldn't show in fullscreen
+  // Hide elements that should not show in fullscreen
   document.querySelectorAll('.hide-on-fullscreen').forEach(el => {
     el.style.display = 'none';
   });

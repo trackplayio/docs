@@ -1,0 +1,155 @@
+---
+title: "ElevenLabs & AI Segments"
+description: "Connect ElevenLabs and add personalized AI voice overlays at specific times in your TrackPlay videos."
+icon: "waveform"
+sidebarTitle: "ElevenLabs AI segments"
+---
+
+AI Segments let you play **personalized text-to-speech audio** during defined time ranges in your video, powered by **ElevenLabs**. Use viewer-specific data (for example a name from your page) to customize what they hear. You never touch the video file.
+
+<Note>
+AI Segments are configured in the **Customize** area for each video (Customize V2). You need an **ElevenLabs API key** saved on your workspace before the player can generate audio.
+</Note>
+
+## What you can do
+
+- Define one or more **segments** with **start** and **end** time (in seconds).
+- Assign an **ElevenLabs voice** per segment using a **Voice ID** from your ElevenLabs account.
+- Write a **prompt template** that can include **placeholders** filled from data you pass on the page.
+- Control **voice volume** and optionally **duck** (lower) the main video audio while the AI voice plays.
+- **Preload** audio shortly before each segment so playback feels instant when the viewer reaches that part of the video.
+
+## Prerequisites
+
+- TrackPlay **player v2** / Customize V2 for the video you want to enhance.
+- An [ElevenLabs](https://elevenlabs.io) account and an **API key** ([API keys in ElevenLabs](https://elevenlabs.io/app/settings/api-keys)).
+- Optional: **Voice IDs** from ElevenLabs for each voice you want to use ([Voices](https://elevenlabs.io/app/voice-library) or your cloned voices).
+
+## Step 1: Connect ElevenLabs
+
+You can connect ElevenLabs from **Integrations** or from **Workspace settings** (both save the same workspace API key).
+
+### From Integrations (recommended)
+
+1. Open your TrackPlay dashboard and go to **Integrations**.
+2. Click **Add integration** (or find **ElevenLabs** on the grid).
+3. Click **Connect** on **ElevenLabs**, then **Configure**.
+4. Paste your **ElevenLabs API key** and click **Save**.
+
+### From Workspace settings
+
+1. Go to **Settings** → **ElevenLabs** (or your workspace’s ElevenLabs page).
+2. Paste your API key and save.
+
+<Warning>
+Treat your ElevenLabs API key like a password. Anyone with the key can use your ElevenLabs quota. TrackPlay stores it for your workspace only; it is not exposed in the embed code.
+</Warning>
+
+## Step 2: Configure AI Segments on a video
+
+1. Open the **video** → **Customize** (V2).
+2. Open the **AI Segments** tab.
+3. Turn **Enable AI Segments** on.
+4. Set **Preload seconds** (how many seconds **before** each segment’s start time the player begins requesting/generated audio). Default is often **30** seconds.
+5. Click **Add segment** and configure:
+
+| Field | Description |
+|--------|-------------|
+| **Start / End time** | Seconds in the video when the AI voice should play (e.g. `5` to `12`). |
+| **Voice ID** | ElevenLabs voice identifier (from the ElevenLabs app). |
+| **Prompt template** | Text sent to ElevenLabs; can include `{placeholders}` (see below). |
+| **Audio volume** | Loudness of the AI voice, from `0` to `1`. |
+| **Video volume during segment** | Main video audio level while AI plays (e.g. lower so the voice is clear). |
+
+6. **Save / Deploy** the video so the updated options are baked into the player build.
+
+<a id="trackplay-data-placeholders" />
+
+## Personalized prompts with `trackplay_data`
+
+The player can replace placeholders in your prompt using **`window.trackplay_data`** on the page where the video is embedded.
+
+**Example prompt:**
+
+```text
+Hey {name}, thanks for watching. Here is something for you.
+```
+
+**On your page (before or when the player loads):**
+
+```javascript
+window.trackplay_data = {
+  name: 'Sam',
+  email: 'sam@example.com',
+  // any keys you want; empty values are ignored for substitution
+};
+```
+
+- Use **`{key}`** where `key` matches a property on `trackplay_data`.
+- If a key is missing, the placeholder may be left as-is in the text.
+
+<Tip>
+Set `trackplay_data` as early as possible on the page so it’s available when the player resolves prompts for preloading.
+</Tip>
+
+## Viewer experience: sound and autoplay
+
+To respect browser rules and avoid wasting generation when the viewer cannot hear audio:
+
+- The player **does not request or play** AI segment audio while the main video is **muted** (typical **muted autoplay** state).
+- After the viewer **unmutes** (or otherwise enables audible playback), the player can **preload** and **play** AI segments as configured.
+
+So segments at **the very start** of the video still work, but only **after** the viewer has unmuted. Same as normal audible playback.
+
+## How generation and delivery work (overview)
+
+- When a viewer is in range to need a segment, the **player** calls TrackPlay’s **events infrastructure** (`e.trackplay.io`) with **`segment_id`**, current **`video_time`**, session/device IDs, and **`trackplay_data`** (dynamic fields for your prompt).
+- The server loads **voice ID and prompt template from your saved video settings** (not from the browser). It checks that **`video_time` is inside the segment’s preload window**, then builds the spoken line by filling `{placeholders}` from `trackplay_data`. Same pattern as on the page.
+- You **cannot** send arbitrary text or a different voice from the client; that prevents abuse (e.g. via `curl`).
+- The service uses your workspace’s **ElevenLabs API key**, then **caches** audio by voice + resolved text so repeat views don’t re-bill ElevenLabs.
+- Cached audio is served from TrackPlay’s CDN; viewers receive a **URL** to the MP3.
+
+<Note>
+You do **not** put your ElevenLabs API key in the embed or in `trackplay_data`. Only your dashboard stores the key.
+</Note>
+
+## Analytics events
+
+The player reports AI segment activity like other video analytics (via the same pipeline as your workspace events). Useful fields typically include **segment id** and **start/end** times so you can analyze how often segments load and play.
+
+(Exact field names in your analytics UI may vary as the product evolves.)
+
+## Troubleshooting
+
+### “No audio” or segments never play
+
+- Confirm **ElevenLabs** is connected and the integration status is **ready** after saving the key.
+- Confirm **AI Segments** is enabled and the video was **deployed** after changes.
+- Ensure the viewer has **unmuted** the video if you use muted autoplay.
+- Check **Voice ID** and **prompt** in ElevenLabs (invalid voice or empty prompt can cause failures).
+
+### Audio late or missing on first watch
+
+- Increase **Preload seconds** so generation can finish before the segment starts (especially for longer lines).
+- First-ever generation for a given text+voice can take longer than cached playback.
+
+### Placeholders not replaced
+
+- Verify `window.trackplay_data` is set and keys match `{placeholder}` names exactly.
+- Keys with empty values may be skipped.
+
+### Testing on localhost
+
+- Playback verification ties requests to analytics events in Elasticsearch. Right at **the beginning of playback**, events may still be **buffered** before they appear in search. TrackPlay allows generation for a short window after `video_time` 0 in that case, as long as workspace, video, session, and device IDs are valid and rate limits pass.
+- If you self-host the events server, you can tune `AI_SEGMENT_EARLY_PLAYBACK_MAX_VIDEO_TIME` (seconds, default `60`, clamped to a maximum of `180`; set `0` to disable the bypass). The window is deliberately tight. A wider one turns the endpoint into free unauthenticated text-to-speech for anyone who finds it.
+
+## Related documentation
+
+- **[Integration configuration](/integration/configuration)**: overview of all integrations.
+- **[Dynamic options](/configuration/dynamic-options)**: runtime player options.
+- **[Domain whitelist](/configuration/domain-whitelist)**: allowed embed domains.
+- **[Video events](/events/video-events)**: player-side event hooks.
+
+## Support
+
+Questions or issues: [support@trackplay.io](mailto:support@trackplay.io).

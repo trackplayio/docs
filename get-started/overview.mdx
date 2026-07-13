@@ -1,45 +1,73 @@
-# Integrations Overview
+---
+title: "How TrackPlay works"
+description: "A play, a session, a sale, and the thread that ties them together."
+icon: "map"
+sidebarTitle: "How it works"
+---
 
-TrackPlay supports multiple payment processor and affiliate platform integrations to automatically track conversions from your video content. This section covers all available integrations and how to configure them.
+Every other video host stops at the play. TrackPlay's whole design is about what happens
+after it.
 
-## Supported Integrations
+## The thread
 
-TrackPlay currently supports the following integration platforms:
+<Steps>
+  <Step title="Someone watches">
+    You embed one snippet. The player starts, and TrackPlay opens a **session** for that
+    viewer: where they came from, which ad, which affiliate, which device.
+  </Step>
+  <Step title="The video does its job">
+    Autoplay with sound on one click. A CTA at the exact second the offer lands. A pixel at
+    75% watched, not on page load. A form when they want the rest, not before they care.
+  </Step>
+  <Step title="They buy">
+    Every cart link on the page is silently tagged with that session. The session rides
+    into the checkout.
+  </Step>
+  <Step title="The sale comes back">
+    Your cart posts it back. TrackPlay joins it to the session, and so to the play, the
+    ad, the affiliate, and the split-test arm.
+  </Step>
+  <Step title="You find out what worked">
+    Not "4,812 people pressed play". Which second moved the buyer.
+  </Step>
+</Steps>
 
-### Payment Processors
-- **Buygoods** - E-commerce platform for digital products
-- **Clickbank** - Digital marketplace and affiliate network  
-- **Digistore24** - Digital product marketplace (mentioned in codebase)
+## The pieces
 
-### Traffic & Conversion Optimization
-- **ElasticFunnels.io** - Funnel optimization platform that enhances other integrations
+<CardGroup cols={2}>
+  <Card title="The player" icon="circle-play" href="/configuration/player-options">
+    What the viewer sees, and every lever that makes it sell.
+  </Card>
+  <Card title="The embed" icon="code" href="/embed/placement">
+    One snippet. ClickFunnels, GoHighLevel, Kajabi, WordPress, or your own build.
+  </Card>
+  <Card title="Integrations" icon="plug" href="/integration/configuration">
+    Your cart posts the sale back so it can be credited.
+  </Card>
+  <Card title="Analytics" icon="chart-line" href="/analytics/overview">
+    Retention, funnel, source economics, player quality.
+  </Card>
+  <Card title="Split tests" icon="flask" href="/split-tests/overview">
+    Winner picked on real sales, with a real significance test.
+  </Card>
+  <Card title="The API" icon="key" href="/api-reference/authentication">
+    Send events and conversions from your own backend.
+  </Card>
+</CardGroup>
 
-## How Integrations Work
+## Two ideas worth understanding early
 
-1. **Session Tracking**: TrackPlay automatically generates unique session IDs for each video viewer
-2. **Parameter Injection**: The system modifies purchase links on your page to include tracking parameters
-3. **Conversion Capture**: When users complete purchases, the platforms send conversion data back to TrackPlay
-4. **Analytics**: View detailed conversion analytics in your TrackPlay dashboard
+**The session is the thread.** Almost everything here (a conversion, a custom event, a CRM
+tag, a retention curve split by buyer) works by landing on the viewer's session. When
+something comes back unattributed, it is because the session never reached it. The [Custom
+Events API](/api-reference/custom-events) is blunt about this: it tells you
+`"attributed": false` rather than guess, because a fabricated session would corrupt your
+traffic sources and your affiliate payouts.
 
-## Integration Status
+**A custom event is not a conversion.** Events are things that happened. Conversions are
+money. TrackPlay keeps them apart on purpose, so a quiz completion can never quietly
+inflate your revenue, ROAS or EPC.
 
-Each integration has three possible statuses:
-
-- **Not ready** - Configuration required before the integration can function
-- **Ready to use** - Fully configured and actively tracking conversions
-- **Error** - There's an issue with the integration that needs attention
-
-## Getting Started
-
-1. Navigate to the **Integrations** section in your TrackPlay dashboard
-2. Click **Add new integration** to see available options
-3. Select your desired platform and follow the setup instructions
-4. Configure the required parameters for your chosen integration
-5. Test the integration to ensure proper tracking
-
-## Next Steps
-
-- [Buygoods Integration Setup](./buygoods)
-- [Clickbank Integration Setup](./clickbank)
-- [ElasticFunnels Integration Setup](./elasticfunnels)
-- [Conversion Tracking Guide](./conversion-tracking)
+<Note>
+  Ready? [Get your first video live](/get-started/quick-start).
+</Note>

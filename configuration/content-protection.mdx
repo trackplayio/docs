@@ -1,0 +1,78 @@
+---
+title: "Content protection"
+description: "Signed segments, domain lock, and a decoy for scrapers."
+icon: "shield-check"
+sidebarTitle: "Content protection"
+---
+
+Your video is a product. This stops it being taken at scale.
+
+When protection is on, the playlist is served through a checkpoint that inspects every
+viewer before handing over the video. Requests that look like scrapers get a decoy.
+Segment URLs are signed and expire.
+
+## Where to set it
+
+Two places, one set of rules:
+
+- **Workspace default**: Settings → **Content Protection**. Applies to every video.
+- **Per video**: Video → Customize → **Content Protection**. Overrides the workspace
+  default for that video.
+
+<Note>
+  A video inherits the workspace defaults until you switch it to **Custom for this video**.
+  That switch is all-or-nothing: the video takes a full copy of the rules and stops
+  inheriting. Later changes to the workspace default will not reach it.
+</Note>
+
+## The rules
+
+<AccordionGroup>
+  <Accordion title="Block datacenter bots (on by default)">
+    Blocks AWS, Google Cloud, Azure and hosting-provider IP ranges, plus crawlers that
+    identify themselves.
+
+    This is the one that does most of the work. Scraping at scale runs on rented servers.
+  </Accordion>
+
+  <Accordion title="Block proxies and VPNs (off by default)">
+    <Warning>
+      This needs the IP-security add-on on your lookup provider. Without it, the rule does
+      nothing at all. It is not a silent partial win. It is a no-op.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Require domain allowlist (off by default)">
+    Refuses playback unless the embedding page's hostname is in your [domain
+    whitelist](/configuration/domain-whitelist).
+
+    <Warning>
+      An empty domain list allows **every** site. Turning this on without adding domains
+      protects nothing.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Country rules">
+    Allow or block a list of countries, by the viewer's IP.
+
+    When the country lookup fails, the viewer is let through rather than blocked. A
+    paying customer behind an unrecognised IP is a worse outcome than a scraper getting
+    one video.
+  </Accordion>
+
+  <Accordion title="Segment link expiry">
+    How long a signed segment URL stays valid. Default **120 seconds**, range 30 to 3600 seconds.
+
+    Shorter is tighter, but too short can break playback on a slow connection.
+  </Accordion>
+</AccordionGroup>
+
+## What it does not do
+
+<Warning>
+  Content protection stops **automated scraping and hotlinking at scale**. It does not stop
+  a real person with a screen recorder or a browser extension, and nothing that plays a
+  video in a browser can.
+
+  Anyone who tells you otherwise is selling you something.
+</Warning>

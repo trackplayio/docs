@@ -1,0 +1,205 @@
+---
+title: "Conversions API"
+description: "Post the sale back to TrackPlay and credit it to the video that caused it."
+icon: "cart-shopping"
+sidebarTitle: "Conversions API"
+---
+
+Your cart knows a sale happened. TrackPlay knows who watched. This endpoint joins them.
+
+Use it when your cart is not one of the [supported
+integrations](/integration/configuration), or when you want to record a sale your cart
+never sees: a phone close, a manual invoice, an upsell in your own checkout.
+
+<Note>
+  If you sell through ClickBank, BuyGoods, Digistore24, ThriveCart, SamCart, WarriorPlus
+  or JVZoo, **you do not need this API.** Connect the integration and the postback is
+  wired for you.
+</Note>
+
+## Send a sale
+
+Needs a token with the `conversions:write` scope. See
+[Authentication](/api-reference/authentication).
+
+<CodeGroup>
+
+```bash curl
+curl https://app.trackplay.io/api/v1/conversions \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: order_10482" \
+  -d '{
+    "video_code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34",
+    "session_code": "3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22",
+    "conversion_id": "order_10482",
+    "conversion_value": 297.00,
+    "conversion_currency": "USD",
+    "conversion_product_name": "Pro Annual",
+    "conversion_customer_email": "buyer@example.com"
+  }'
+```
+
+```js Node
+await fetch('https://app.trackplay.io/api/v1/conversions', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'order_10482',
+  },
+  body: JSON.stringify({
+    video_code: '9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34',
+    session_code: '3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22',
+    conversion_id: 'order_10482',
+    conversion_value: 297.00,
+    conversion_currency: 'USD',
+  }),
+});
+```
+
+```php PHP
+$ch = curl_init('https://app.trackplay.io/api/v1/conversions');
+curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+        'Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+        'Content-Type: application/json',
+        'Idempotency-Key: order_10482',
+    ],
+    CURLOPT_POSTFIELDS => json_encode([
+        'video_code' => '9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34',
+        'session_code' => '3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22',
+        'conversion_id' => 'order_10482',
+        'conversion_value' => 297.00,
+    ]),
+]);
+$response = curl_exec($ch);
+```
+
+</CodeGroup>
+
+```json 201 Created
+{
+  "recorded": true,
+  "conversion_id": "order_10482",
+  "video_code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34",
+  "attributed_to_split_test": true
+}
+```
+
+## Send the session
+
+`video_code` is the only required field. But a sale with no `session_code` is a sale you
+cannot trace back to a viewer. It lands in your totals and nowhere else. Your
+play-to-sale rate, your retention-by-buyer curve, and your split-test winner all stay
+blind to it.
+
+Read the session from the player and carry it through your checkout:
+
+```js
+const sessionCode = window.trackplay.getSessionId();
+// put it in a hidden field, your cart's custom/passthrough param, whatever survives to
+// your backend — then send it back here.
+```
+
+<Tip>
+  Most carts have a passthrough field for exactly this. It is the same mechanism the
+  built-in cart integrations use.
+</Tip>
+
+## Do not double count
+
+Send an **`Idempotency-Key`** header on every call.
+
+The first response for a given key is cached for 24 hours. A retry carrying the same key
+replays that response (same status, same body, plus `Idempotency-Replayed: true`) and
+does **not** record a second sale.
+
+<Warning>
+  Payment webhooks retry. Without an `Idempotency-Key`, a retried delivery books the sale
+  twice and inflates your revenue. Use your order ID.
+</Warning>
+
+## Fields
+
+<ParamField body="video_code" type="string" required>
+  The video the sale is credited to. A conversion with no video cannot be attributed to
+  anything.
+</ParamField>
+
+<ParamField body="session_code" type="string">
+  The viewer's session. Strongly recommended. See [above](#send-the-session).
+</ParamField>
+
+<ParamField body="conversion_id" type="string">
+  Your order ID. Defaults to a generated UUID.
+</ParamField>
+
+<ParamField body="conversion_value" type="number">
+  The sale amount. Feeds revenue, EPC, RPV, AOV and ROAS.
+</ParamField>
+
+<ParamField body="conversion_currency" type="string">
+  Three-letter code, e.g. `USD`.
+</ParamField>
+
+<ParamField body="conversion_product_code" type="string" />
+<ParamField body="conversion_product_name" type="string" />
+<ParamField body="conversion_customer_email" type="string" />
+<ParamField body="conversion_customer_name" type="string" />
+<ParamField body="conversion_customer_phone" type="string" />
+
+<ParamField body="conversion_data" type="object">
+  Anything else you want kept with the sale.
+</ParamField>
+
+<ParamField body="is_test" type="boolean">
+  Marks the row as a test so you can exclude it from reporting.
+</ParamField>
+
+<ParamField body="split_test_id" type="string">
+  Send with `split_test_variation_id`, or send neither. One without the other cannot
+  identify an arm, and a half-attributed sale looks valid while being wrong.
+</ParamField>
+
+<ParamField body="split_test_variation_id" type="string">
+  Send with `split_test_id`, or send neither.
+</ParamField>
+
+<ParamField body="occurred_at" type="string">
+  When the sale happened, as a date-time. Defaults to now.
+</ParamField>
+
+## What happens next
+
+A recorded conversion fans out to everything you have connected: webhooks, Zapier, Meta
+CAPI, TikTok Events, GA4, RedTrack, Everflow, and your CRM. It works exactly as a cart
+postback would. You do not wire those up twice.
+
+## Errors
+
+<AccordionGroup>
+  <Accordion title="401">
+    The token could not be resolved to a workspace.
+  </Accordion>
+  <Accordion title="403: INSUFFICIENT_SCOPE">
+    Your token lacks `conversions:write`.
+  </Accordion>
+  <Accordion title="404">
+    No video with that `video_code` exists in **this** workspace. The response echoes the
+    `video_code` you sent. A token can only ever write into its own workspace, so this
+    usually means the code is from a different one.
+  </Accordion>
+  <Accordion title="422">
+    Validation failed. Check `conversion_currency` is exactly 3 characters and that
+    `split_test_id`/`split_test_variation_id` were sent together.
+  </Accordion>
+  <Accordion title="429">
+    Rate limited. Writes are capped at 60 per minute per token.
+  </Accordion>
+  <Accordion title="503">
+    The conversion could not be written. Retry with the same `Idempotency-Key`.
+  </Accordion>
+</AccordionGroup>

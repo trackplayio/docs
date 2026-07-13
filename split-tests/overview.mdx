@@ -1,0 +1,115 @@
+---
+title: "Split tests"
+description: "Winner picked on real sales, with a real significance test, not on click-through."
+icon: "flask"
+sidebarTitle: "Overview"
+---
+
+Two versions of a video. Traffic split between them. The winner decided by a statistical
+test on the metric you actually care about.
+
+## Create a test
+
+**A/B Tests → Create New A/B Test.** Four steps.
+
+<Steps>
+  <Step title="Name it and pick the goal">
+    The **goal metric** is what decides the winner:
+
+    | Goal | Decided on |
+    | --- | --- |
+    | **Conversion Rate** | Sales per unique play |
+    | **Completion Rate** | Plays that reach the end |
+    | **Watch Time** | Average seconds watched |
+    | **Custom Metric** | Any metric you have defined |
+
+    Choosing **Custom Metric** makes you pick *which* one. Define it first under
+    [Analytics → Custom metrics](/analytics/custom-metrics).
+  </Step>
+
+  <Step title="Configure the arms">
+    - **Clone**: take one video and clone it into 2, 3 or 4 arms you then edit.
+    - **Compare**: pit existing, different videos against each other.
+
+    Set the traffic split (it must total 100%) and, optionally, a start and end date.
+  </Step>
+
+  <Step title="Pick the videos">
+    One base video in clone mode; one video per arm in compare mode.
+  </Step>
+
+  <Step title="Review and launch">
+    Check the split, then launch.
+  </Step>
+</Steps>
+
+<Warning>
+  In clone mode the arms start out **identical**. A test between two identical videos
+  measures nothing. Edit each arm (the thumbnail, the hook, the CTA timing, the offer)
+  before you send traffic. The dashboard flags any arm still identical to the control.
+</Warning>
+
+## Embed the test, not the video
+
+Once a test is live, the video's **Embed** tab switches to a loader snippet pointed at
+the test. That snippet is what rotates viewers between arms.
+
+<Warning>
+  A hand-copied embed pinned to one video code **does not rotate**. Every viewer sees that
+  one arm, your test collects nothing, and the analytics show zero plays on the others.
+  Re-copy the snippet from the Embed tab after you launch.
+</Warning>
+
+## How the winner is decided
+
+<AccordionGroup>
+  <Accordion title="The statistical test">
+    **Rate metrics** (conversion rate, completion rate, custom metrics) use a
+    two-proportion z-test. The denominator is **unique plays**, not raw plays, so a viewer
+    who resumes or restarts cannot inflate an arm.
+
+    **Watch time** uses a two-sample t-test.
+  </Accordion>
+
+  <Accordion title="Why watch time sometimes says 'insufficient data'">
+    A t-test needs the real variance of each arm. When it is not available, TrackPlay
+    reports insufficient data and gives you the effect size only.
+
+    It will not invent a p-value from an assumed variance. A fabricated p-value is worse
+    than no p-value, because you would act on it.
+  </Accordion>
+
+  <Accordion title="Testing 3 or 4 arms">
+    More arms means more comparisons at once, which makes a false positive more likely.
+    TrackPlay applies a Bonferroni correction: the significance threshold is divided by
+    the number of comparisons.
+  </Accordion>
+
+  <Accordion title="Significance alone is not enough">
+    A winner must clear **both** bars: statistically significant, *and* a large enough
+    effect to be worth acting on. A 0.1% lift that is technically significant is not a
+    reason to rebuild your funnel.
+  </Accordion>
+</AccordionGroup>
+
+## Reading the results
+
+**A/B Tests → your test.**
+
+- **Traffic Flow** shows where traffic actually landed, which is not always where you
+  configured it to land.
+- **Statistical Analysis** shows the p-value, the confidence interval, and the test
+  statistic (labelled `z` or `t` depending on the metric).
+- **Variant Performance** compares the arms directly.
+
+## Declaring a winner
+
+Click **Declare Winner** and pick an arm. All traffic moves to it.
+
+If the numbers are not ready, TrackPlay tells you why and makes you tick an explicit
+override before the button works.
+
+<Note>
+  Overriding the guardrail is sometimes the right call: a launch ends, a deadline lands.
+  But you are choosing on a coin flip. Know that you are doing it.
+</Note>

@@ -1,9 +1,11 @@
 ---
 title: "Dynamic Options Manager"
 description: "Runtime configuration changes for TrackPlay video player using the OptionsManager plugin"
+icon: "wand-magic-sparkles"
+sidebarTitle: "Dynamic options"
 ---
 
-The OptionsManager plugin allows you to dynamically modify player configuration after initialization, providing powerful runtime customization capabilities without requiring player reload.
+OptionsManager changes player configuration after the player has loaded. You can retune the player at runtime without reloading it.
 
 <Note>
 The OptionsManager is available in TrackPlay player version 6.0+ and is automatically initialized with every player instance.
@@ -45,7 +47,7 @@ document.addEventListener('TrackPlayReady', function (e) {
 ```
 
 <Note>
-Options can be set immediately when `TrackPlayReady` fires. If the OptionsManager isn't ready yet, options are automatically queued and applied after player initialization completes, ensuring user settings always take precedence over default options.
+Options can be set immediately when `TrackPlayReady` fires. If the OptionsManager is not ready yet, options are automatically queued and applied after player initialization completes, ensuring user settings always take precedence over default options.
 </Note>
 
 ### Batch Option Changes
@@ -536,6 +538,12 @@ function setMainColor(color) {
 <Warning>
 Dynamic option changes are applied immediately to the running player. Some changes may cause visual flicker or interruption of user experience. Test thoroughly in your specific use case.
 </Warning>
+
+## AI Segments (`ai_segments_options`)
+
+If you use **ElevenLabs**-powered AI voice segments, the `ai_segments_options` group (enable flag, preload timing, segment list, voice IDs, prompts, volumes) can be updated at runtime with `setOption` / `setMultipleOptions` like other nested options, provided your deployed player build includes the AI Segments feature.
+
+See **[ElevenLabs & AI Segments](/integration/elevenlabs-ai-segments)** for setup, `trackplay_data`, and viewer experience (including unmute behavior).
 
 ## Troubleshooting
 

@@ -1,86 +1,87 @@
-Connect your Buygoods account to TrackPlay to automatically track conversions from your video content.
+---
+title: "BuyGoods"
+description: "Connect BuyGoods so every sale is credited back to the video that made it."
+icon: "cart-shopping"
+sidebarTitle: "BuyGoods"
+---
 
-## Overview
+TrackPlay tags every BuyGoods link on your page with the viewer's session. BuyGoods posts
+the sale back. The two get joined. You find out which video, and which second, made
+the money.
 
-The Buygoods integration allows TrackPlay to:
-- Automatically inject tracking parameters into Buygoods purchase links
-- Capture conversion data when purchases are completed
-- Provide detailed analytics on video-driven sales
+## Connect it
 
-## Setup Instructions
+<Snippet file="connect-integration.mdx" />
 
-### Step 1: Activate the Integration
+## Tracking parameters
 
-1. Go to **Integrations** in your TrackPlay dashboard
-2. Click **Add new integration** 
-3. Select **Buygoods** from the available options
-4. Click **Activate**
+Pick one. It carries the viewer's session into BuyGoods and comes back on the postback.
 
-### Step 2: Configure Tracking Parameters
+| Parameter | |
+| --- | --- |
+| `subid_1` | Sub ID 1 |
+| `subid_2` | Sub ID 2 |
+| `subid_3` | Sub ID 3 |
+| `vid1` | Vendor ID 1 |
+| `vid2` | Vendor ID 2 |
+| `vid3` | Vendor ID 3 |
 
-Choose which parameter TrackPlay should use to track conversions:
+<Warning>
+  Choose a parameter nothing else is using. TrackPlay **overwrites** the parameter you
+  pick on every BuyGoods URL. If an affiliate network is already writing to `subid_1`,
+  one of you loses.
+</Warning>
 
-**Available Parameters:**
-- `subid_1` - Subid 1
-- `subid_2` - Subid 2  
-- `subid_3` - Subid 3
-- `vid1` - Vendor ID 1
-- `vid2` - Vendor ID 2
-- `vid3` - Vendor ID 3
+## Set up the postback
 
-1. Select your preferred tracking parameter from the dropdown
-2. Click **Update Integration**
+Copy the URL from the **Postback Setup** window, then in your [BuyGoods admin
+panel](https://admin.buygoods.com/#products-settings) go to **Product Settings** and paste
+it into all three fields:
 
-### Step 3: Configure Buygoods Postback URLs
+- **New Order URL**
+- **Order Refund URL**
+- **Order Chargeback URL**
 
-Once your integration is ready, you'll see a unique postback URL. This URL needs to be added to your Buygoods product settings.
+Then trigger a test order. The Postback Setup window is watching for it live, and the
+status flips from **Not configured** to **Active** on its own.
 
-1. Copy the provided postback URL from TrackPlay
-2. Log into your [Buygoods Admin Panel](https://admin.buygoods.com/#products-settings)
-3. Navigate to **Product Settings**
-4. Add the TrackPlay URL to the following fields:
-   - **New Order URL**
-   - **Order Refund URL** 
-   - **Order Chargeback URL**
+<Note>
+  The integration deliberately stays **Not configured** until a real test conversion
+  arrives. That way you find out the URL is wrong now, rather than after a launch when you
+  are missing a day of sales.
+</Note>
 
-## How It Works
+<Warning>
+  Your postback URL is a secret. Anyone who has it can post fake conversions into your
+  workspace. Give it to BuyGoods and nobody else.
+</Warning>
 
-1. **Visitor watches your video** - TrackPlay generates a unique session ID
-2. **Automatic link modification** - All Buygoods links on your page are automatically updated with the tracking parameter
-3. **User makes purchase** - The tracking parameter connects the sale to the video session
-4. **Conversion tracking** - Buygoods sends conversion data to TrackPlay via the postback URL
-5. **Analytics** - View conversion metrics in your TrackPlay dashboard
+## What TrackPlay does to your links
 
-## Tracking Parameters Explained
+Every link and form on the page pointing at `buygoods.com` gets the parameter added
+automatically. You never edit a buy button.
 
-TrackPlay will automatically override your chosen parameter on all Buygoods URLs with the visitor's unique session ID. For example:
+```
+https://buygoods.com/checkout?product=123
+→ https://buygoods.com/checkout?product=123&subid_1=<session>
+```
 
-- Original URL: `https://buygoods.com/checkout?subid_1=abc123`
-- Modified URL: `https://buygoods.com/checkout?subid_1=trackplay_session_xyz789`
+## When it does not work
 
-## Security Note
-
-⚠️ **Important**: Do not share your postback URL with anyone except the Buygoods team. This URL contains sensitive integration data.
-
-## Troubleshooting
-
-### Integration Status: "Not Ready"
-- Ensure you've selected a tracking parameter
-- Click "Update Integration" to save your settings
-
-### No Conversions Showing
-- Verify the postback URL is correctly set in Buygoods
-- Check that your Buygoods links are present on the page with your TrackPlay video
-- Ensure the integration status shows "Ready to use"
-
-### Links Not Being Modified
-- Confirm your Buygoods links contain "buygoods.com" in the URL
-- Check that the TrackPlay video player has fully loaded
-- Verify the integration is active and properly configured
-
-## Support
-
-If you're experiencing issues with your Buygoods integration, contact TrackPlay support with:
-- Your workspace ID
-- Integration configuration details
-- Example URLs that should be tracked
+<AccordionGroup>
+  <Accordion title="Status is stuck on 'Not configured'">
+    No test conversion has arrived. Check the postback URL is pasted into **all three**
+    Product Settings fields, then push a real test sale through: the status only moves
+    when BuyGoods actually posts back.
+  </Accordion>
+  <Accordion title="Sales arrive, but no video is attached">
+    The link was not tagged. Confirm the buy button really points at `buygoods.com`. A
+    redirect or a link shortener in between will strip the query string and the session
+    with it.
+  </Accordion>
+  <Accordion title="Links are not being modified at all">
+    The player script has to be on the same page as the link. If your buy button lives on
+    a different page, carry the session yourself and post the sale through the
+    [Conversions API](/api-reference/conversions).
+  </Accordion>
+</AccordionGroup>
