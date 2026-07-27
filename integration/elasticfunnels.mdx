@@ -1,106 +1,109 @@
 ---
-title: "Elasticfunnels"
+title: "ElasticFunnels"
+description: "Connect ElasticFunnels so every sale, refund and renewal is credited back to the video that made it."
 icon: "cart-shopping"
 sidebarTitle: "ElasticFunnels"
 ---
 
-ElasticFunnels.io integration enhances your existing payment processor integrations by optimizing purchase links for better conversion tracking.
-
-## Overview
-
-The ElasticFunnels integration is different from other TrackPlay integrations. Instead of being a standalone payment processor, it acts as an enhancement layer that works with your existing integrations (Buygoods, Clickbank, Digistore24).
-
-## What ElasticFunnels Does
-
-When activated, ElasticFunnels will:
-- Update purchase links for any other integrated vendors
-- Optimize conversion tracking across multiple platforms
-- Enhance the tracking capabilities of your existing integrations
+TrackPlay tags every ElasticFunnels checkout link on your page with the viewer's session,
+carried on `vtid`. ElasticFunnels posts each sale back with that value attached, and
+TrackPlay joins it to the play that produced it.
 
 ## Connect it
 
-<Steps>
-  <Step title="Open Integrations">
-    Click **Integrations** in the sidebar.
-  </Step>
-  <Step title="Connect ElasticFunnels">
-    Find the **ElasticFunnels** card and click **Connect**.
-  </Step>
-</Steps>
+<Snippet file="connect-integration.mdx" />
 
-That is the whole setup. There is no tracking parameter to pick and no postback URL to
-paste. ElasticFunnels goes **Active** immediately, and starts enhancing whichever cart
-integrations you already have connected.
+The parameter to pick is **`vtid`**, which is already selected for you. Change it only if
+you use `vtid` for something else.
 
-## How It Works
+## Set up the postback URL
 
-1. **Prerequisites**: You must have at least one other integration active (Buygoods, Clickbank, or Digistore24)
-2. **Link Enhancement**: ElasticFunnels scans for purchase links matching pattern `/b?p=`
-3. **Parameter Injection**: Adds tracking parameters from your other active integrations
-4. **Cross-Platform Tracking**: Enables unified tracking across multiple payment processors
+Copy the URL from the **Postback Setup** window. In ElasticFunnels, go to
+**Settings → Merchants**, pick your merchant, click **Edit**, and open the
+[**Postback URLs**](https://docs.elasticfunnels.io/merchants/postback-urls) tab. Paste the
+URL in and tick **Enabled**.
 
-## Technical Details
+Then push a test sale. The status flips from **Not configured** to **Active** the moment
+the first postback lands.
 
-ElasticFunnels specifically looks for and modifies:
-- URLs containing the pattern `/b?p=`
-- Links are enhanced with parameters from your other active integrations
-- Session tracking data is synchronized across platforms
+<Warning>
+  Your postback URL is a secret. Anyone holding it can post fake conversions into your
+  workspace. Give it to ElasticFunnels and nobody else.
+</Warning>
 
-## Integration Requirements
+## Signing secret
 
-To use ElasticFunnels effectively:
+ElasticFunnels signs every postback it sends. Paste the signing secret from that same
+**Postback URLs** tab into TrackPlay and each delivery is checked against the signature
+before it is accepted, so nobody who guesses your URL can write a sale into your account.
 
-1. **Active Payment Processor**: You need at least one of the following integrations configured:
-   - Buygoods
-   - Clickbank
-   - Digistore24
+The secret is optional. Leave it blank and your postbacks still land, with the URL itself
+as the only protection. Fill it in if you can: ElasticFunnels shows the secret once, so
+copy it when you first set the postback up.
 
-2. **Proper Link Structure**: Your purchase links should follow ElasticFunnels URL patterns
+<Note>
+  ElasticFunnels lets you rotate the signing secret at any time. If you do, paste the new
+  one into TrackPlay in the same sitting. Postbacks signed with a secret TrackPlay does not
+  have are rejected.
+</Note>
 
-3. **TrackPlay Video**: The enhancement only works on pages with active TrackPlay videos
+## Which events are recorded
 
-## Benefits
+| ElasticFunnels event | Recorded as |
+| --- | --- |
+| `purchase` | Sale |
+| `subscription_renewal` | Rebill |
+| `refund` | Refund |
+| `chargeback` | Chargeback |
+| `subscription_cancel` | Cancellation |
 
-- **Enhanced Tracking**: Better conversion attribution across multiple platforms
-- **Simplified Setup**: Minimal configuration required
-- **Cross-Platform Analytics**: Unified view of conversions from different sources
-- **Automatic Optimization**: Works behind the scenes without manual intervention
+Refunds and chargebacks come through with a negative amount from ElasticFunnels. TrackPlay
+records the gross amount and marks the row as a refund, so your revenue reporting nets out
+correctly without any double negatives.
 
-## Compatibility
+Everything else ElasticFunnels can send is acknowledged and not recorded, because none of
+it is money moving: `abandon`, `shipped`, `failed_payment`, `subscription_change` and
+`subscription_renewal_failed`. A plan upgrade or downgrade is not counted; the renewal that
+follows it reports the new amount by itself.
 
-ElasticFunnels works with:
-- ✅ Buygoods integration
-- ✅ Clickbank integration  
-- ✅ Digistore24 integration
-- ✅ Multiple simultaneous integrations
+Test sends and sandbox merchants are flagged as test conversions, so they never reach your
+real revenue numbers.
 
-## Status Information
+## What TrackPlay does to your links
 
-- **Active**: ElasticFunnels is running and enhancing your other integrations
-- **No configuration UI**: Unlike other integrations, ElasticFunnels does not require parameter setup
+Every link and form pointing at an ElasticFunnels checkout (the `/b?p=` pattern) gets the
+parameter added automatically.
 
-## Troubleshooting
+```
+https://pay.example.com/b?p=OFFER123
+→ https://pay.example.com/b?p=OFFER123&vtid=<session>
+```
 
-### ElasticFunnels Not Working
-- Ensure you have at least one other payment integration active
-- Check that your purchase links follow the expected URL patterns
-- Verify that TrackPlay videos are properly loaded on your pages
+ElasticFunnels links are the one case where TrackPlay does not also append its own `tp_ck`
+key. `vtid` already carries everything needed to attribute the sale, so the checkout URL
+stays as short as it can be.
 
-### No Enhanced Tracking
-- Confirm other integrations are properly configured
-- Check that purchase links contain the `/b?p=` pattern
-- Ensure the ElasticFunnels integration shows **Active** status
+## When it does not work
 
-## Best Practices
-
-1. **Configure Base Integrations First**: Set up Buygoods, Clickbank, or Digistore24 before activating ElasticFunnels
-2. **Test Integration**: Verify that enhanced tracking is working with test purchases
-3. **Monitor Analytics**: Check that conversion data is being captured across all platforms
-4. **Keep Other Integrations Active**: ElasticFunnels requires other integrations to function
-
-## Support
-
-If you are experiencing issues with ElasticFunnels:
-- Verify your other integrations are working correctly first
-- Check that your purchase links follow ElasticFunnels URL patterns
-- Contact TrackPlay support with details about your existing integrations
+<AccordionGroup>
+  <Accordion title="Status is stuck on 'Not configured'">
+    No postback has arrived yet. Check the URL is saved in the **Postback URLs** tab, that
+    **Enabled** is ticked, and push a real test sale.
+  </Accordion>
+  <Accordion title="Postbacks are rejected">
+    The signing secret does not match. Re-copy it from ElasticFunnels (a trailing space is
+    enough to break it) and save again. Deliveries older than five minutes are also
+    rejected, which normally means a clock problem rather than a wrong secret.
+  </Accordion>
+  <Accordion title="Sales arrive with no video attached">
+    The link was not tagged. Confirm your buy button points at a `/b?p=` checkout URL and
+    that no redirect in between is stripping the query string. A sale made from a link you
+    built by hand, or an organic one, has no session to join to and will show up
+    unattributed.
+  </Accordion>
+  <Accordion title="ElasticFunnels keeps retrying">
+    ElasticFunnels retries a failed delivery on a 1m → 5m → 30m → 2h → 12h schedule and
+    then marks it dead. You can re-queue it from its own delivery log once the cause is
+    fixed.
+  </Accordion>
+</AccordionGroup>

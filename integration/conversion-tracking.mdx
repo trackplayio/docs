@@ -99,10 +99,10 @@ TrackPlay records the following with every conversion:
 - Important for multi-step checkout processes
 - Maintains attribution accuracy
 
-### ElasticFunnels Enhancement
-- When ElasticFunnels is active, tracking parameters are enhanced
-- Cross-platform parameter injection
-- Unified tracking across multiple payment processors
+### ElasticFunnels
+- Checkout links matching `/b?p=` are tagged with the session on `vtid`
+- ElasticFunnels returns it as `tracking.vtid` on every postback
+- Sales, refunds, chargebacks and renewals all join back to the play
 
 ## Optimization Best Practices
 
