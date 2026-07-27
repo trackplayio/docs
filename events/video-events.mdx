@@ -206,6 +206,44 @@ player.on('continue-watching', function (event) {
 });
 ```
 
+### `exit-intent`
+Fired when the exit-intent overlay is shown because the viewer looked ready to leave. Configure the triggers under **Video → Customize → Exit Intent** (pointer leaving toward the browser chrome, browser back button, or switching tabs).
+
+**Data:**
+```javascript
+{
+  reason: "pointer-leave-top", // "pointer-leave-top" | "back-button" | "tab-blur"
+  time: 42.6,                  // Time when the overlay was shown
+  session_id: "abc123"         // Device/session identifier
+}
+```
+
+```javascript
+player.on('exit-intent', function (event) {
+  console.log('Exit intent fired:', event.detail.reason);
+  // Reveal your own retention offer on the page
+  document.querySelector('#retention-offer').style.display = 'block';
+});
+```
+
+### `exit-intent-dismissed`
+Fired when the viewer closes the exit-intent overlay (clicks the backdrop).
+
+**Data:**
+```javascript
+{
+  reason: "pointer-leave-top", // The trigger that showed the overlay
+  time: 43.1,
+  session_id: "abc123"
+}
+```
+
+```javascript
+player.on('exit-intent-dismissed', function (event) {
+  console.log('Exit intent dismissed');
+});
+```
+
 ## Complete Integration Example
 
 ```javascript
@@ -240,6 +278,10 @@ document.addEventListener('TrackPlayReady', function (e) {
   // Overlay events
   player.on('continue-watching', function (event) {
     console.log('Continue watching overlay shown at', event.detail.time);
+  });
+
+  player.on('exit-intent', function (event) {
+    console.log('Exit intent fired:', event.detail.reason);
   });
 });
 ```

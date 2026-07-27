@@ -1,0 +1,239 @@
+---
+title: "Viewer identity"
+description: "Session, device, profile: how TrackPlay knows one viewer across pages, visits and a sale."
+icon: "fingerprint"
+sidebarTitle: "Identity overview"
+---
+
+Everything TrackPlay reports hangs on one question: **is this the same person?** The same
+person who watched, who filled the form, who came back a week later, who bought. Three
+identifiers answer it, at three widths.
+
+## Session, device, profile
+
+<CardGroup cols={3}>
+  <Card title="Session" icon="clock">
+    One continuous visit. Carries the attribution: the ad, the affiliate, the source,
+    the split-test arm.
+  </Card>
+  <Card title="Device" icon="laptop">
+    One browser, across visits. Ties this week's session to last week's on the same
+    machine.
+  </Card>
+  <Card title="Profile" icon="user">
+    One human, across devices. Built from a shared identity: an email, a customer id.
+  </Card>
+</CardGroup>
+
+### Session
+
+A session opens the moment the player starts. It ends after **30 minutes of inactivity**,
+and it rotates after an absolute **12 hours** so a tab left open overnight does not become
+one endless visit. Two visits more than 30 minutes apart, with nothing between, are two
+sessions.
+
+The session is where attribution lives. When a sale, a custom event, or a CRM tag lands
+unattributed, it is because it never reached a session. TrackPlay says so out loud rather
+than guessing, because a fabricated session would corrupt your traffic sources and your
+affiliate payouts.
+
+The id rides in a first-party cookie, `trackplay_session_id`, on your domain. Read it from
+the player with `window.trackplay.getSessionId()`.
+
+### Device
+
+The device id is a first-party cookie, `trackplay_device_id`, that lives for **one year**
+and is mirrored to `localStorage` so a cleared cookie can still recover it. It is the same
+value across every session on that browser, so a returning viewer joins the sessions they
+opened before. Read it from the player with `window.trackplay.getDeviceId()`.
+
+A device is not a person. The same viewer on a phone and a laptop is two devices until an
+identity connects them.
+
+### Profile
+
+The profile is the person. It is assembled in the identity graph: when two identifiers are
+seen together (a session and an email, an email and a customer id), they collapse to one
+profile. That is how a sale that arrives hours later, with no browser and no session,
+still finds the viewer who watched.
+
+Profiles are built from the identity you already collect: a captured lead, a cart
+conversion carrying the buyer email. You do not assemble them by hand.
+
+<Note>
+  A profile connects a **buyer to a viewer** for Customer 360. It does not, on its own,
+  credit a **sale to a play**. Play-level attribution needs the session. See [how a sale
+  finds its video](#how-a-sale-finds-its-video).
+</Note>
+
+## The email hash rule
+
+An email is an identity signal. TrackPlay never stores it raw as an identifier: it hashes
+it at the edge, the moment it arrives, and keeps only the hash. The rule is one line, and
+it is the same everywhere (the player, the events pipeline, GDPR deletion):
+
+```
+email_hash = sha256( lower( trim( email ) ) )
+```
+
+Trim the whitespace. Lowercase every character. SHA-256. Lowercase hex.
+
+<Steps>
+  <Step title="Start with what the customer typed">
+    `  Jane@Acme.com  `
+  </Step>
+  <Step title="Trim, then lowercase">
+    `jane@acme.com`
+  </Step>
+  <Step title="SHA-256, as lowercase hex">
+    `7bb9e30283184c3b4bbbf2262a600be7165d7e6f50e424a611aa64394e7ecdb5`
+  </Step>
+</Steps>
+
+Because the rule is fixed, the same address always produces the same hash. A hash you
+compute on your server matches the hash TrackPlay computed from a lead form months earlier,
+and the two events land on one profile.
+
+<Tip>
+  Send the raw `email` and TrackPlay hashes it for you with the exact rule above. You never
+  have to implement SHA-256 to be matched. Hash it yourself only when you would rather the
+  raw address never leave your servers.
+</Tip>
+
+## What you can send as identity
+
+When you send an event server to server, you can attach any of these. TrackPlay tries them
+in order and stops at the first that resolves a known viewer.
+
+| Signal | Field | Notes |
+| --- | --- | --- |
+| Session | `session_id` | Best. The exact viewer, with their attribution. |
+| Device | `device_id` | The browser, across visits. |
+| Profile | `profile_id` | A profile you already resolved. |
+| Email, raw | `email` | Hashed on arrival to both SHA-256 and MD5. Never stored raw. |
+| Email, pre-hashed | `email_sha256`, `email_md5` | Send the hash, never the address. |
+| Phone, raw | `phone` | Normalized to E.164, then hashed. Never stored raw. |
+| Phone, pre-hashed | `phone_sha256`, `phone_md5` | Send the hash, never the number. |
+| Customer id | `external_id` | Your own id for the customer. |
+
+Send whichever you hold. A raw value is the strongest, because TrackPlay hashes it for
+you with the exact rule below, so you never have to implement SHA-256 or MD5. Send a
+pre-hashed value when you would rather the raw address or number never leave your servers.
+
+<Warning>
+  Raw email and raw phone are hashed the instant they arrive. The events pipeline never
+  writes your customers' plaintext address or number to storage as an identity key. In the
+  browser, a raw email is hashed on the page before it is sent, and that path is available
+  over HTTPS only: on an insecure origin the raw email is dropped and you must pass
+  `email_sha256` yourself.
+</Warning>
+
+### The two hash algorithms, and why raw values bridge them
+
+TrackPlay keeps two hashes of every contact: SHA-256 and MD5. Different platforms emit
+different ones. A Meta CAPI export gives you SHA-256. An older affiliate postback gives you
+MD5. To connect a viewer seen through one to the same viewer seen through the other, both
+hashes have to exist on one profile.
+
+A raw value is what puts them there. When you send a raw `email` or `phone`, TrackPlay
+computes **both** the SHA-256 and the MD5 and writes both as identity signals. A later
+SHA-256 only sighting and a later MD5 only sighting of that same address then both land on
+the one profile.
+
+Pre-hashed values do not bridge on their own. If you send only `email_sha256` in one call
+and only `email_md5` in another, TrackPlay fills each slot but cannot know the two hashes
+came from the same address, so it does not merge them. Only a raw sighting, which produces
+both hashes at once, links them. Send the raw value when you can, or send both hashes
+together in one call.
+
+| Hash | Field | Format |
+| --- | --- | --- |
+| SHA-256 | `email_sha256`, `phone_sha256` | 64 lowercase hex characters |
+| MD5 | `email_md5`, `phone_md5` | 32 lowercase hex characters |
+
+There is no native MD5 in the browser, so the browser never computes one. It hashes a raw
+email to SHA-256 with `crypto.subtle` and forwards the raw address so the server computes
+the MD5 and bridges the two.
+
+### Phone numbers must be E.164
+
+A raw `phone` is normalized to E.164 (`+<country><subscriber>`) on the server before it is
+hashed, with a small deterministic rule and no country database:
+
+<Steps>
+  <Step title="A leading 00 becomes a +">
+    `0044 20 7946 0958` is read as `+44 20 7946 0958`. The `00` is the international access
+    prefix.
+  </Step>
+  <Step title="A + is required">
+    Without an explicit international prefix the country code is ambiguous (a bare national
+    number collides across countries), so TrackPlay rejects the number rather than guess at
+    its country. A phone with no `+` and no leading `00` is dropped, not stored wrong.
+  </Step>
+  <Step title="Digits are kept, spaces and punctuation are stripped">
+    The result is a `+` followed by 8 to 15 digits. `+44 20 7946 0958` becomes
+    `+442079460958`. Fewer than 8 or more than 15 digits is rejected.
+  </Step>
+</Steps>
+
+A pre-hashed `phone_sha256` or `phone_md5` you compute yourself must be the hash of the
+number in this exact E.164 form, or it will not match the hash TrackPlay computes from a
+raw number.
+
+## How a sale finds its video
+
+A cart postback arrives minutes after the sale, from the cart's server, with no browser and
+no cookie. It attaches to the play by the **session id you carried through checkout**, not
+by the buyer's email.
+
+<Steps>
+  <Step title="The session is tagged onto the buy link">
+    When you connect a [cart integration](/integration/configuration), every link on the
+    page pointing at your cart is tagged with the viewer's session, automatically.
+  </Step>
+  <Step title="The session rides into the checkout">
+    Carried in the cart's tracking parameter (ClickBank's vendor variable, BuyGoods'
+    `subid`, and so on).
+  </Step>
+  <Step title="The postback carries it back">
+    The cart returns that same parameter. TrackPlay matches it to the session, and so to
+    the play, the ad, the affiliate and the split-test arm.
+  </Step>
+</Steps>
+
+If the session never made it through checkout, the sale is still recorded, but it cannot be
+credited to a play. It is not dropped and not guessed at.
+
+The buyer email on that sale still does its own job: it links the buyer to a **profile**, so
+Customer 360 shows the person and every session they ever opened. That is profile-level
+identity, separate from crediting the sale to a particular video.
+
+## Privacy
+
+<AccordionGroup>
+  <Accordion title="Raw email is never stored as an identifier">
+    An `email` you send is hashed with `sha256(lower(trim(email)))` at the edge. Only the
+    hash is used to resolve identity. (A cart conversion may still keep the address on the
+    sale record itself, as the receipt contact, which is a different thing from an identity
+    key.)
+  </Accordion>
+  <Accordion title="The ids are first-party">
+    `trackplay_session_id` and `trackplay_device_id` are cookies on your own domain, not a
+    third-party tracker. They are readable only by your pages.
+  </Accordion>
+  <Accordion title="Deletion resolves by the same hash">
+    A GDPR deletion request resolves the person through the same `email_hash` edges, so the
+    identity you sent is the identity that gets erased.
+  </Accordion>
+</AccordionGroup>
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Custom Events API" icon="bolt" href="/api-reference/custom-events">
+    Send an event on the viewer's session, from the browser or your backend.
+  </Card>
+  <Card title="Conversions API" icon="cart-shopping" href="/api-reference/conversions">
+    Post a sale and credit it to the video that caused it.
+  </Card>
+</CardGroup>

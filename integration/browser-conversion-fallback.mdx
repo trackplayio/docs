@@ -1,0 +1,123 @@
+---
+title: "Browser conversion fallback"
+icon: "browser"
+sidebarTitle: "Browser fallback"
+---
+
+Some carts cannot post a sale to TrackPlay from their server. This is the fallback for those carts. Your thank-you page reports the sale from the browser instead, and TrackPlay attaches it to the watch session that led to it.
+
+Use it only when you have to. The server postback is more accurate, and it stays the recommended way to record a sale.
+
+## When to use this
+
+<Note>
+Reach for the fallback only when your cart has no server postback and no supported webhook. If your cart is in the [supported list](/integration/configuration), set up the postback there first. It is the accurate path.
+</Note>
+
+The difference is trust. A server postback comes straight from the cart, so TrackPlay records it as a **verified** sale. A browser report comes from a page, which anyone can load, so TrackPlay records it as **unverified**.
+
+That distinction is not cosmetic. Verified revenue, EPC, RPV, ROAS and the split-test winner are all built from verified sales only. An unverified browser sale never moves those numbers. It is kept separate so a page-claimed sale can never inflate a figure you make decisions on.
+
+## Install the snippet
+
+1. Open **Integrations**, pick the cart you use, and open its settings.
+2. Turn on **Report sales from the browser**.
+3. Copy the snippet. It already carries your workspace and this cart.
+4. Paste it on your thank-you page, the page a buyer lands on right after paying.
+5. Replace `ORDER_ID` and `AMOUNT` with your cart's order variables.
+
+The snippet looks like this:
+
+```html
+<!-- TrackPlay conversion (browser fallback). Place on your thank-you page. -->
+<script>
+(function () {
+  var EVENTS = "https://e.trackplay.io";
+  var WORKSPACE = "your-workspace-code";
+  var INTEGRATION = "clickbank";
+  function tpSession() {
+    try { if (window.trackplay && window.trackplay.getSessionId) return window.trackplay.getSessionId(); } catch (e) {}
+    var m = document.cookie.match(/(?:^|;\s*)trackplay_session_id=([^;]+)/);
+    if (m) return decodeURIComponent(m[1]);
+    return new URLSearchParams(location.search).get("tp_sid");
+  }
+  window.TrackPlay = window.TrackPlay || {};
+  if (!window.TrackPlay.conversion) {
+    window.TrackPlay.conversion = function (o) {
+      o = o || {};
+      try {
+        fetch(EVENTS + "/v1/conversion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          keepalive: true, mode: "cors", credentials: "omit",
+          body: JSON.stringify({
+            workspace_code: WORKSPACE,
+            integration: o.integration || INTEGRATION,
+            order_id: String(o.order_id || ""),
+            value: Number(o.value),
+            currency: o.currency || "USD",
+            session_id: tpSession(),
+            customer_email: o.customer_email,
+            product_name: o.product_name
+          })
+        });
+      } catch (e) {}
+    };
+  }
+  // Replace ORDER_ID and AMOUNT with your cart's order variables.
+  window.TrackPlay.conversion({ order_id: "ORDER_ID", value: AMOUNT });
+})();
+</script>
+```
+
+Every cart names its order variables differently. Yours might write the order number and total for you as merge tags. Put those where `ORDER_ID` and `AMOUNT` are, so a real buyer sends a real order.
+
+## The `window.TrackPlay.conversion` call
+
+The snippet defines one function and calls it. You can call it yourself from your own code too.
+
+<ParamField path="order_id" type="string" required>
+Your cart's order or transaction number. This is the key that ties the browser report to the server postback, so it has to be the same value your cart sends.
+</ParamField>
+
+<ParamField path="value" type="number" required>
+The sale amount, as a number.
+</ParamField>
+
+<ParamField path="currency" type="string" default="USD">
+Three-letter currency code.
+</ParamField>
+
+<ParamField path="integration" type="string">
+The cart key. The snippet fills this in for you.
+</ParamField>
+
+<ParamField path="customer_email" type="string">
+Optional. The buyer's email, if your thank-you page has it.
+</ParamField>
+
+<ParamField path="product_name" type="string">
+Optional. The product name.
+</ParamField>
+
+## How the session is attached
+
+The call reads the session id the TrackPlay player already keeps for the viewer. It looks in three places, in order: the player on the page, the first-party `trackplay_session_id` cookie, and a `?tp_sid=` value on the URL for a checkout that crosses domains. The first one it finds wins, and the sale joins that watch session.
+
+If none is found, the sale is still recorded. It just cannot be tied to a session.
+
+No secret is used. The snippet carries only your public workspace code and the cart key, the same values already visible in your embed. The private key that signs your server postbacks never touches the page.
+
+## Running both never double counts
+
+You can keep your server postback on and add the browser fallback at the same time. Most people should, because the postback is the accurate signal and the fallback only fills the gaps.
+
+When both a browser report and a server postback arrive for the same order, TrackPlay matches them by order id and keeps one sale. The verified server sale always wins, whichever one arrived first. So the fallback can catch a sale your postback missed, without ever counting a sale twice.
+
+That is also why the order id matters. Send the same order number from the page as your cart sends from its server, and the two line up. Send a different value, and TrackPlay treats them as two separate orders.
+
+## Reading the results
+
+Browser sales show up as conversions, marked unverified. You can tell them apart from server sales at any time, and your verified revenue, EPC, RPV and ROAS stay built from server sales alone.
+
+If a browser sale later arrives again as a verified postback, it simply becomes verified. Nothing on your side changes.

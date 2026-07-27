@@ -23,6 +23,13 @@
             ]
           },
           {
+            "group": "Viewer identity",
+            "icon": "fingerprint",
+            "pages": [
+              "identity/overview"
+            ]
+          },
+          {
             "group": "The Player",
             "icon": "circle-play",
             "pages": [
@@ -33,7 +40,8 @@
                 "icon": "bullseye",
                 "pages": [
                   "player/cta-and-timing",
-                  "player/lead-capture"
+                  "player/lead-capture",
+                  "player/exit-intent"
                 ]
               },
               "configuration/dynamic-options"
@@ -102,6 +110,7 @@
                 "icon": "arrow-right-from-bracket",
                 "pages": [
                   "integration/conversion-tracking",
+                  "integration/browser-conversion-fallback",
                   "integration/webhooks",
                   "integration/analytics"
                 ]
@@ -135,8 +144,10 @@
             "group": "Guides",
             "icon": "book-open",
             "pages": [
+              "api-reference/identify",
               "api-reference/custom-events",
-              "api-reference/conversions"
+              "api-reference/conversions",
+              "api-reference/analytics"
             ]
           },
           {

@@ -16,6 +16,9 @@ before the reveal, asks for it when they want what comes next.
   <Step title="Choose when it appears">
     - **First play**: as soon as they start watching.
     - **At a time**: a number of seconds in. This is the one that converts.
+    - **When the viewer pauses**: the moment they disengage, which is usually the
+      moment before they leave. Pair it with copy like *"Don't have time to watch now?
+      Enter your info and we will send it to you."*
   </Step>
   <Step title="Decide if they can skip">
     Turn on **allow skip** to let them past it, optionally after a delay of up to 60
@@ -34,8 +37,16 @@ before the reveal, asks for it when they want what comes next.
 
 <Tip>
   Turn on **pause on show** so the video stops while the form is up. A form competing with
-  a talking video gets ignored by both.
+  a talking video gets ignored by both. On the **when the viewer pauses** trigger it means
+  something slightly different: the video is already stopped, so it holds the video there
+  until they submit.
 </Tip>
+
+<Note>
+  The form never reappears for someone who has already submitted it, on any trigger. It
+  shows at most once per view, so a viewer who skips it is not asked again every time they
+  pause.
+</Note>
 
 ## Designing it
 

@@ -1,0 +1,279 @@
+---
+title: "Analytics API"
+description: "Read the plays, the retention curve, the raw events and the revenue for any video, or export them as a file."
+icon: "chart-line"
+sidebarTitle: "Analytics API"
+---
+
+Your dashboard shows you where a video loses people. This API hands you the same numbers as
+JSON, so you can pull them into your own reporting, a spreadsheet, or a data warehouse.
+
+Four read endpoints answer the questions the dashboard answers: how many plays, how far
+they watched, what every viewer did, and what it earned. When you want the whole thing as a
+file instead, one export endpoint builds it in the background.
+
+<Note>
+  Every call here needs a token with the `analytics:read` scope. See
+  [Authentication](/api-reference/authentication) to mint one. Reads are capped at 600
+  requests per minute per token.
+</Note>
+
+## The four reads
+
+Each read is scoped to one video and one date range. The video is addressed by its numeric
+ID, the `video_id` you see in every response.
+
+| Endpoint | What it answers |
+| --- | --- |
+| `GET /videos/{video}/analytics/summary` | Plays, unique plays, completions, average watch time. |
+| `GET /videos/{video}/analytics/retention` | The share of viewers still watching at each point. |
+| `GET /videos/{video}/analytics/events` | Every raw event, one row at a time, paginated. |
+| `GET /videos/{video}/analytics/conversions` | Sales credited to the video, grouped by name. |
+
+The full parameter and response schema for each lives in the generated reference under
+**Analytics**. This page shows the shape and the flow. It does not restate the schema.
+
+### Read the summary
+
+The headline numbers for one video. `from` defaults to 30 days ago, `to` to today, `tz` to
+`UTC`.
+
+<CodeGroup>
+
+```bash curl
+curl "https://app.trackplay.io/api/v1/videos/481/analytics/summary?from=2026-06-17&to=2026-07-17" \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```js Node
+const res = await fetch(
+  'https://app.trackplay.io/api/v1/videos/481/analytics/summary?from=2026-06-17&to=2026-07-17',
+  { headers: { Authorization: 'Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' } },
+);
+const summary = await res.json();
+```
+
+</CodeGroup>
+
+```json 200 OK
+{
+  "video_id": 481,
+  "video_code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34",
+  "from": "2026-06-17",
+  "to": "2026-07-17",
+  "tz": "UTC",
+  "summary": {
+    "plays": 59627,
+    "unique_plays": 51204,
+    "completion_count": 8143,
+    "completion_rate": 13.7,
+    "avg_watch_time_s": 214.6,
+    "bounce_count": 6021
+  }
+}
+```
+
+<Tip>
+  The summary response carries `Cache-Control: private, max-age=60` and an `ETag`. Send the
+  `ETag` back as `If-None-Match` and a repeat within the minute returns `304 Not Modified`
+  with no body. It keeps a polling dashboard cheap.
+</Tip>
+
+### Read the retention curve
+
+`watch_pct` is the number people trip on. It is a **fraction between 0 and 1**, not a
+percent. `0.6413` means 64.13% of viewers reached that point. Multiply by 100 before you
+render it.
+
+```bash curl
+curl "https://app.trackplay.io/api/v1/videos/481/analytics/retention?buckets=100" \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{
+  "video_id": 481,
+  "buckets": [
+    { "bucket_pct": 0,   "watch_pct": 1.0 },
+    { "bucket_pct": 25,  "watch_pct": 0.6413 },
+    { "bucket_pct": 50,  "watch_pct": 0.4192 },
+    { "bucket_pct": 75,  "watch_pct": 0.2517 },
+    { "bucket_pct": 100, "watch_pct": 0.1366 }
+  ]
+}
+```
+
+`buckets` defaults to 100 and is capped at 200. `bucket_pct` is how far through the video
+the point sits, from 0 to 100.
+
+### List the raw events
+
+The auditable stream. This is the only read that is paginated. Read `events.total` for the
+count, then walk the pages with `page` and `per_page`. `from` here defaults to 7 days ago,
+not 30. `ip_hash` is always `null` in the response.
+
+```bash curl
+curl "https://app.trackplay.io/api/v1/videos/481/analytics/events?event_type=conversion&page=1&per_page=100" \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{
+  "video_id": 481,
+  "page": 1,
+  "per_page": 100,
+  "events": {
+    "total": 4812,
+    "data": [
+      {
+        "event_type": "play",
+        "event": "video-play",
+        "session_code": "3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22",
+        "watch_seconds": 0,
+        "video_time": 0,
+        "created_at": "2026-07-16T14:02:11Z",
+        "ip_hash": null
+      }
+    ]
+  }
+}
+```
+
+<ParamField query="event_type" type="string">
+  Return only one type: `play`, `pause`, `ended`, `conversion`, and so on. Omit it to
+  return every type.
+</ParamField>
+
+<ParamField query="per_page" type="integer" default="100">
+  Rows per page. Capped at 500.
+</ParamField>
+
+To read everything, request page 1, then keep asking for the next page until you have read
+`events.total` rows.
+
+### Read the conversions
+
+Sales credited to the video, grouped by conversion name, with a count and total revenue for
+each. `from` defaults to 30 days ago.
+
+```bash curl
+curl "https://app.trackplay.io/api/v1/videos/481/analytics/conversions" \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{
+  "video_id": 481,
+  "from": "2026-06-17",
+  "to": "2026-07-17",
+  "conversions": [
+    { "event_name": "conversion", "count": 214, "total_revenue": 63558.00 },
+    { "event_name": "upsell",     "count": 38,  "total_revenue": 7562.00 }
+  ]
+}
+```
+
+## Export a batch
+
+A read is one video at a time. When you want many videos, or the whole thing as a file for a
+warehouse, use the export flow. It runs in the background, so you start it, then poll until
+it is ready, then download.
+
+<Steps>
+  <Step title="Start the export">
+    `POST /exports` with the videos, the range, the format and the dataset. Up to 50 videos
+    in one export. It returns straight away with an `export_id` and `status: pending`.
+
+    ```bash curl
+    curl https://app.trackplay.io/api/v1/exports \
+      -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: export_481_482_june" \
+      -d '{
+        "video_ids": [481, 482],
+        "from": "2026-06-17",
+        "to": "2026-07-17",
+        "format": "csv",
+        "type": "events"
+      }'
+    ```
+
+    ```json 202 Accepted
+    {
+      "export_id": "tpex_9f2c1a7e4d3b4a11",
+      "status": "pending"
+    }
+    ```
+
+    `type` is one of `events`, `summary`, `retention` or `conversions`. `format` is `csv`
+    or `json`.
+  </Step>
+  <Step title="Poll until it is ready">
+    `GET /exports/{export}` returns the current status. While it builds, `status` is
+    `pending` and `download_url` is `null`. When it finishes, `status` is `ready` and
+    `download_url` carries the link.
+
+    ```bash curl
+    curl https://app.trackplay.io/api/v1/exports/tpex_9f2c1a7e4d3b4a11 \
+      -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ```
+
+    ```json 200 OK
+    {
+      "export_id": "tpex_9f2c1a7e4d3b4a11",
+      "status": "ready",
+      "download_url": "https://app.trackplay.io/api/v1/exports/tpex_9f2c1a7e4d3b4a11/download"
+    }
+    ```
+  </Step>
+  <Step title="Download the file">
+    Fetch `download_url`. It carries the file in the format you asked for.
+  </Step>
+</Steps>
+
+<Warning>
+  An export expires after a while. Once it has, polling it returns `404 EXPORT_NOT_FOUND`.
+  Download the file soon after it is ready, and start a fresh export if the link has gone.
+</Warning>
+
+<Tip>
+  Send an `Idempotency-Key` on the `POST`. A retried request with the same key returns the
+  same export instead of starting a second one, with `Idempotency-Replayed: true` set.
+</Tip>
+
+## Errors
+
+<AccordionGroup>
+  <Accordion title="401: AUTH_REQUIRED / INVALID_TOKEN">
+    No token reached us, or the token is invalid, expired, or revoked. See
+    [Authentication](/api-reference/authentication).
+  </Accordion>
+  <Accordion title="403: INSUFFICIENT_SCOPE">
+    The token is valid but does not carry `analytics:read`. You cannot add a scope to an
+    existing token. Mint a new one with it.
+  </Accordion>
+  <Accordion title="404">
+    On a read, no video with that ID exists in this workspace. On `POST /exports`, one or
+    more of the `video_ids` do not (`VIDEO_NOT_FOUND`). On `GET /exports/{export}`, the
+    export does not exist or has expired (`EXPORT_NOT_FOUND`).
+  </Accordion>
+  <Accordion title="422">
+    Validation failed. A date could not be parsed, `to` fell before `from`, `buckets` or
+    `per_page` was out of range, or an export was missing a required field.
+  </Accordion>
+  <Accordion title="429">
+    Rate limited. Reads are capped at 600 requests per minute per token.
+  </Accordion>
+</AccordionGroup>
+
+## The full reference
+
+Every parameter, every field, every response is in the generated reference, with a
+playground you can call with your own token. Find it in the **API Reference** sidebar: the
+four reads are tagged **Analytics**, the two export calls are tagged **Exports**.
+
+<Note>
+  The reference is generated from the same schema this API serves, so it cannot drift from
+  what the endpoints return. This guide shows the shapes and the flow. The reference is the
+  contract.
+</Note>

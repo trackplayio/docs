@@ -43,7 +43,27 @@ people who did this buy?**
     tp('event', 'quiz_completed', { value: 10, plan: 'pro' });
     ```
 
-    `value` is the numeric value. Every other key becomes a property.
+    `value` is the numeric value. Every other key becomes a property, with one
+    exception: an identity field.
+
+    **You can tie the viewer on the event itself.** Pass any of `email`,
+    `email_sha256`, `email_md5`, `phone`, `phone_sha256`, `phone_md5` or
+    `external_id` in the same call, and TrackPlay ties this viewer to their profile,
+    the same as a dedicated [identify](/api-reference/identify). Send the hash when you
+    would rather the raw address never leave the page:
+
+    ```js
+    // ties the buyer AND records the event, in one call
+    window.trackplay.track('upsell_accepted', {
+      value: 49,
+      email_sha256: '7bb9e30283184c3b4bbbf2262a600be7165d7e6f50e424a611aa64394e7ecdb5'
+    });
+    ```
+
+    An identity field is **never** stored as a property. A raw `email` is hashed
+    before it leaves the page, and the identity fields are stripped from the event, so
+    a plaintext address is never written as event data. Everything else in the call
+    still lands in `properties`.
   </Tab>
 
   <Tab title="From your backend">
@@ -91,30 +111,76 @@ Before the **browser** can send an event, the name has to exist as a custom metr
 The backend API does not require this: a token is already proof of trust. It does still
 enforce the [name cap](#keep-the-name-set-small).
 
-## Getting the session
+## The identity fields
 
 The whole point is landing the event on a real viewer. Pass whichever of these you have.
-TrackPlay tries them in order and stops at the first hit.
+TrackPlay tries them in order and stops at the first that resolves a known viewer. For the
+concepts behind them, see [Viewer identity](/identity/overview).
 
-<Steps>
-  <Step title="session_id (best)">
-    Read it straight from the player and forward it to your backend:
+<ParamField body="session_id" type="string">
+  The viewer's session. Best: the exact viewer, with their attribution. This is the same
+  mechanism a conversion postback uses.
+</ParamField>
 
-    ```js
-    const sessionId = window.trackplay.getSessionId();
-    ```
+<ParamField body="device_id" type="string">
+  The viewer's browser, across visits. A fallback when you have no session.
+</ParamField>
 
-    This is exactly how conversion postbacks already attribute a sale.
-  </Step>
-  <Step title="device_id, then profile_id">
-    Fallbacks when you have no session. `window.trackplay.getDeviceId()`.
-  </Step>
-  <Step title="email or external_id">
-    Resolved through the identity graph. Only matches if that identity was linked to a
-    viewer earlier, for example a lead they submitted on a previous visit. Email is
-    hashed on arrival and never stored raw.
-  </Step>
-</Steps>
+<ParamField body="profile_id" type="string">
+  A profile you already resolved. A fallback.
+</ParamField>
+
+<ParamField body="email" type="string">
+  Raw email. Resolved through the identity graph, and only a match if that address was
+  linked to a viewer earlier (a captured lead, an earlier sale). Hashed on arrival to both
+  SHA-256 and MD5 with `sha256(lower(trim(email)))`, and never stored raw.
+</ParamField>
+
+<ParamField body="email_sha256" type="string">
+  A pre-hashed email: `sha256(lower(trim(email)))`, 64 lowercase hex characters. Send the
+  hash when you would rather the raw address never leave your servers.
+</ParamField>
+
+<ParamField body="email_md5" type="string">
+  A pre-hashed email: MD5 of `lower(trim(email))`, 32 lowercase hex characters.
+</ParamField>
+
+<ParamField body="phone" type="string">
+  Raw phone. Normalized to E.164 on the server (`+<country><subscriber>`) and then hashed
+  to both SHA-256 and MD5. A number with no `+` and no leading `00` is dropped, because its
+  country is ambiguous. Never stored raw.
+</ParamField>
+
+<ParamField body="phone_sha256" type="string">
+  A pre-hashed phone: SHA-256 of the number in E.164 form, 64 lowercase hex characters.
+</ParamField>
+
+<ParamField body="phone_md5" type="string">
+  A pre-hashed phone: MD5 of the number in E.164 form, 32 lowercase hex characters.
+</ParamField>
+
+<ParamField body="external_id" type="string">
+  Your own id for the customer. Resolved through the identity graph, same as email.
+</ParamField>
+
+<Note>
+  A raw `email` or `phone` bridges the two hash algorithms: TrackPlay computes both the
+  SHA-256 and the MD5 and writes both, so a viewer later seen through a SHA-256 only
+  platform and one seen through an MD5 only platform unify. Two pre-hashed values sent in
+  separate calls (one SHA-256, one MD5) do not merge on their own. See [Viewer
+  identity](/identity/overview#the-two-hash-algorithms-and-why-raw-values-bridge-them).
+  Sending a field TrackPlay does not know is rejected with `400 INVALID_PAYLOAD`.
+</Note>
+
+<Note>
+  Whether you carry these fields on an event (browser `track()` above, or this backend call) or
+  send them alone through the [Identify API](/api-reference/identify), the effect on identity is
+  the same: the viewer ties to their profile. What they do **not** do is store a raw email or
+  phone for outreach. A hashed value ties the person, it cannot be emailed or called. To store a
+  real contact, send a **raw** `email` with a `video_code`, which upserts a lead so [Audience and
+  Hot Leads](/analytics/overview#audience-and-hot-leads) show an address instead of "Email
+  (hashed)".
+</Note>
 
 The response tells you which one worked:
 
@@ -123,7 +189,71 @@ The response tells you which one worked:
   "attributed": true, "matched_by": "session_id" }
 ```
 
-### When nothing matches
+`matched_by` is one of `session_id`, `device_id`, `profile_id`, or `identity` (an email or
+`external_id` resolved through the graph). It is `null` when nothing matched.
+
+## Getting the ids into your server
+
+This is the question every S2S integration hits: the event fires on your backend, but the
+session and device ids live in the browser. You bridge them. Do it on the funnel domain,
+where the ids are readable, then carry them to your call.
+
+<Steps>
+  <Step title="Read the ids on the page">
+    On a page **with** a player:
+
+    ```js
+    const sessionId = window.trackplay.getSessionId();
+    const deviceId  = window.trackplay.getDeviceId();
+    ```
+
+    On a page **without** a player, the standalone script exposes the session:
+
+    ```js
+    const sessionId = window.tp('session');   // or window.tp.getSessionId()
+    ```
+
+    Both read the same first-party cookies (`trackplay_session_id`,
+    `trackplay_device_id`) the player set. You can read those cookies directly if you
+    prefer.
+  </Step>
+  <Step title="Hand them to your backend">
+    Put the ids in a hidden form field, your server session, or the payload of your own
+    AJAX call. Then include `session_id` (and `device_id` as a fallback) in the request
+    to `/v1/event`.
+  </Step>
+</Steps>
+
+### Carrying the session across a domain
+
+When checkout is on another domain (`clickbank.com`), the funnel's first-party cookie is
+unreadable there. Carry the session in the URL and the player adopts it on landing:
+
+```
+https://checkout.example.com/order?tp_sid=3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22
+```
+
+The player reads `?tp_sid=` and joins the same session instead of minting a new one, so an
+event fired from the checkout page still lands on the viewer who watched.
+
+<Tip>
+  Where a cart's buy URL supports a passthrough or vendor parameter (ClickBank's vendor
+  variables, ElasticFunnels), carry the session through it. Where it does not, do not fight
+  it: identify by `email` instead. If the buyer was linked to that address earlier (an
+  opt-in, an upsell page), the profile still connects.
+</Tip>
+
+### When the browser is long gone
+
+An affiliate-network postback arrives minutes later, server to server, with no browser
+context at all. Attach it by the identity you already hold. A cart **conversion** attaches
+by the session id you carried through checkout (see the [Conversions
+API](/api-reference/conversions) and [how a sale finds its
+video](/identity/overview#how-a-sale-finds-its-video)). A **custom event** can attach by
+`email` or `external_id`: the same viewer was linked to that address on an earlier opt-in,
+so the profile connects even without a session.
+
+## When nothing matches
 
 You get **`202`** and `"attributed": false`.
 

@@ -40,7 +40,6 @@ TrackPlay fires these events to `window.dataLayer`:
 | `trackplay_progress_50` | Viewer reaches 50% |
 | `trackplay_progress_75` | Viewer reaches 75% |
 | `trackplay_complete` | Video finishes |
-| `trackplay_conversion` | A conversion is recorded |
 | `trackplay_cta_click` | Viewer clicks a CTA overlay |
 
 Each event includes a `trackplay` property with context data (e.g. `videoCode`).
@@ -58,11 +57,13 @@ Each event includes a `trackplay` property with context data (e.g. `videoCode`).
    - Trigger: the trigger you just created
 3. Publish your container
 
-### Example: Fire Facebook Pixel on conversion
+### Example: Fire a pixel on CTA click
 
-1. Create a trigger for Custom Event `trackplay_conversion`
-2. Create a Facebook Pixel tag that fires `Purchase` on that trigger
+1. Create a trigger for Custom Event `trackplay_cta_click`
+2. Create your pixel tag (for example Meta) that fires on that trigger
 3. Publish your container
+
+> Purchases and other conversions are not sent to the dataLayer. The sale happens on your cart's page after the viewer leaves the video, so TrackPlay reports it server-side (Meta CAPI, GA4 Measurement Protocol, TikTok Events), not through GTM.
 
 ## Troubleshooting
 

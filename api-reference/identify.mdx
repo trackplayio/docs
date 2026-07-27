@@ -1,0 +1,363 @@
+---
+title: "Identify API"
+description: "Tell TrackPlay who the viewer is, from the page or your server, so their sessions collapse to one person."
+icon: "id-card"
+sidebarTitle: "Identify API"
+---
+
+A viewer typed their email into your opt-in. They came back on their phone a week later. They
+bought from a checkout on another domain. Those are three sessions on two devices. Hand
+TrackPlay the identity behind them and they collapse to one profile, so Customer 360 shows
+the person and every session they ever opened.
+
+The Identify API is how you hand it over. It takes an email, a phone, a customer id, or a
+hash of any of those, and links it to the viewer on the page.
+
+<Note>
+  Identify connects a **buyer to a viewer** for Customer 360. It does not, on its own,
+  credit a **sale to a play**. Play-level attribution needs the session to travel through
+  checkout. See [how a sale finds its video](/identity/overview#how-a-sale-finds-its-video).
+</Note>
+
+## From the browser
+
+The page already knows its workspace, session, device and video, so the browser fills all of
+that for you. You pass only the identity.
+
+<Tabs>
+  <Tab title="On a page with a player">
+    The player exposes `identify` once it loads:
+
+    ```js
+    window.trackplay.identify({ email: 'jane@acme.com' });
+    ```
+
+    To identify before the player script has finished loading, drop a stub that queues the
+    call. The player drains the queue when it starts:
+
+    ```html
+    <script>
+      window.trackplayIdentify = window.trackplayIdentify || function () {
+        (window.__tpIdentityQueue = window.__tpIdentityQueue || []).push(arguments);
+      };
+      trackplayIdentify({ email: 'jane@acme.com' });
+    </script>
+    ```
+
+    Or declare the identity as configuration, read the moment the player constructs:
+
+    ```html
+    <script>
+      window.trackplay_identity = { email_sha256: '7bb9e3...e7ecdb5' };
+    </script>
+    ```
+  </Tab>
+
+  <Tab title="On a page without a player">
+    Load the standalone events script, then call `tp('identify', ...)`. It carries the same
+    first-party session and device the player would:
+
+    ```html
+    <script src="https://scripts.trackplay.io/tp-events.js"
+            data-workspace="YOUR_WORKSPACE_CODE" async></script>
+    <script>
+      // stub so a call before the script loads is not lost
+      window.tp = window.tp || function () { (window.tp.q = window.tp.q || []).push(arguments); };
+
+      tp('identify', { email: 'jane@acme.com' });
+    </script>
+    ```
+
+    A player-less page usually has no video. To enable the lead upsert (see below), set
+    `window.trackplay_video_code` to the video the viewer watched earlier.
+  </Tab>
+</Tabs>
+
+The browser hashes a raw email to SHA-256 with `crypto.subtle` before it leaves the page, so
+the raw address is sent only to compute the MD5 and bridge the two hashes server-side. That
+client hashing needs a secure context: on an insecure (`http:`) origin the raw email is
+dropped, and you must pass `email_sha256` yourself. A raw phone is always forwarded as typed,
+because E.164 normalization is the server's job.
+
+## The upsell page: tie a buyer with no player
+
+This is the third way to tie a customer to a session. The [in-video lead form](/player/lead-capture)
+is the first. A [cart or conversion postback](/api-reference/conversions) carrying the session
+is the second. Identify is the third, and it is the one that works on a page with no player and
+no form: the thank-you page, the upsell, the members area.
+
+The page has no video on it, so it loads the standalone events script. That script reads the
+same first-party `trackplay_session_id` cookie the player set on the video page, so the identity
+you send lands on the session the viewer already had. Their earlier plays, their traffic source,
+and this purchase collapse to one profile.
+
+Send the hash when you would rather the raw address never leave your servers. Send the raw value
+when you have it and want TrackPlay to bridge both hash algorithms for you.
+
+<Tabs>
+  <Tab title="Hashed email (SHA-256)">
+    Your backend rendered the page and already holds the buyer's email. Hash it there, print the
+    hash into the page, and identify with it. The raw address never reaches the browser.
+
+    ```html
+    <script src="https://scripts.trackplay.io/tp-events.js"
+            data-workspace="YOUR_WORKSPACE_CODE" async></script>
+    <script>
+      // stub so a call before the async script loads is not lost
+      window.tp = window.tp || function () { (window.tp.q = window.tp.q || []).push(arguments); };
+
+      // sha256( lower( trim( email ) ) ), 64 lowercase hex, computed on your server
+      tp('identify', {
+        email_sha256: '7bb9e30283184c3b4bbbf2262a600be7165d7e6f50e424a611aa64394e7ecdb5',
+        external_id: 'cust_88213'
+      });
+    </script>
+    ```
+  </Tab>
+
+  <Tab title="Plain email or phone">
+    You have the raw value and want TrackPlay to hash it and bridge both algorithms. The browser
+    hashes the email to SHA-256 before it leaves the page, then forwards the raw value only so the
+    server can also compute the MD5. A raw phone is forwarded as typed, because E.164
+    normalization is the server's job.
+
+    ```html
+    <script src="https://scripts.trackplay.io/tp-events.js"
+            data-workspace="YOUR_WORKSPACE_CODE" async></script>
+    <script>
+      window.tp = window.tp || function () { (window.tp.q = window.tp.q || []).push(arguments); };
+
+      tp('identify', {
+        email: 'jane@acme.com',
+        phone: '+14155552671',
+        external_id: 'cust_88213'
+      });
+    </script>
+    ```
+
+    To upsert a real lead address for Customer 360, set `window.trackplay_video_code` to the video
+    the buyer watched earlier before you call. See the `video_code` field below.
+  </Tab>
+</Tabs>
+
+The same call works on a page that does have a player. There you use `window.trackplay.identify(...)`
+instead of `tp('identify', ...)`, and the player fills the session, device and video for you. Both
+surfaces run the identical hash rule, so a hash from one matches a hash from the other.
+
+<Tip>
+  Two ways tie the customer, and both are fine. Call `identify` on its own when you have nothing
+  else to send. Or carry the same identity fields on a [custom
+  event](/api-reference/custom-events), for example `track('upsell_accepted', { value: 49,
+  email_sha256: '...' })`: the event records and the viewer ties, in one call. Either way a raw
+  `email` is hashed before it leaves the page and the raw value is never stored as event data.
+</Tip>
+
+Once the identity lands, the buyer becomes a resolvable person: they appear in
+[Audience and Hot Leads](/analytics/overview#audience-and-hot-leads), and Customer 360 shows every
+session behind them. A viewer identified only this way, with a hashed email on an upsell page and no
+form ever filled in, is still a known customer.
+
+<Note>
+  **Hashed ties identity. Raw is what you can act on.** A hash links this buyer to their sessions
+  and lets Hot Leads recognise them, but a hash cannot be emailed or called. TrackPlay stores a raw
+  address for outreach only where one was genuinely captured: an [in-video lead
+  form](/player/lead-capture), a [conversion](/api-reference/conversions), or a **raw** `email` sent
+  with a `video_code` (which upserts a workspace lead, source `identify`). A pure hashed identify
+  ties the person and shows "Email (hashed)" in the profile, never a raw address, because none was
+  ever sent.
+</Note>
+
+## From your server
+
+Identify is a public endpoint. It carries no token, because the workspace code is already
+public (it is in your page source) and the body is a viewer identity the page is claiming, not
+a secret. Post it directly when you already hold the identity server-side:
+
+<CodeGroup>
+
+```bash curl
+curl https://e.trackplay.io/v1/identify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workspace_code": "YOUR_WORKSPACE_CODE",
+    "session_code": "3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22",
+    "email": "jane@acme.com",
+    "external_id": "cust_88213"
+  }'
+```
+
+```js Node
+await fetch('https://e.trackplay.io/v1/identify', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    workspace_code: 'YOUR_WORKSPACE_CODE',
+    session_code: '3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22',
+    email: 'jane@acme.com',
+    external_id: 'cust_88213',
+  }),
+});
+```
+
+</CodeGroup>
+
+<Warning>
+  Because the endpoint is public, an identify is written at the **lowest** rung of the
+  confidence ladder. A verified lead-form submit outranks it, and a token-authenticated
+  server event outranks both. Use it to enrich identity, not as the sole source of truth for
+  a high-stakes merge.
+</Warning>
+
+## Request
+
+<ParamField body="workspace_code" type="string" required>
+  Your workspace code. The only required field.
+</ParamField>
+
+<ParamField body="email" type="string">
+  Raw email. Hashed on arrival to both SHA-256 and MD5, never stored raw.
+</ParamField>
+
+<ParamField body="email_sha256" type="string">
+  A pre-hashed email: `sha256(lower(trim(email)))`, 64 lowercase hex characters.
+</ParamField>
+
+<ParamField body="email_md5" type="string">
+  A pre-hashed email: MD5 of `lower(trim(email))`, 32 lowercase hex characters.
+</ParamField>
+
+<ParamField body="phone" type="string">
+  Raw phone. Normalized to E.164 on the server, then hashed to both SHA-256 and MD5. A number
+  with no `+` and no leading `00` is dropped, because its country is ambiguous.
+</ParamField>
+
+<ParamField body="phone_sha256" type="string">
+  A pre-hashed phone: SHA-256 of the number in E.164 form, 64 lowercase hex characters.
+</ParamField>
+
+<ParamField body="phone_md5" type="string">
+  A pre-hashed phone: MD5 of the number in E.164 form, 32 lowercase hex characters.
+</ParamField>
+
+<ParamField body="external_id" type="string">
+  Your own id for the customer. Stored as `<workspace_code>:<external_id>`.
+</ParamField>
+
+<ParamField body="session_code" type="string">
+  The viewer's session. Links this identity to that session and its attribution. The browser
+  fills it for you.
+</ParamField>
+
+<ParamField body="device_id" type="string">
+  The viewer's device. The browser fills it for you.
+</ParamField>
+
+<ParamField body="device_global_id" type="string">
+  A cross-domain device id, when you have one.
+</ParamField>
+
+<ParamField body="video_code" type="string">
+  The video the viewer watched. When you send a **raw** `email` with a `video_code`,
+  TrackPlay also upserts a workspace lead (source `identify`), so Customer 360 shows the real
+  address instead of "Email (hashed)".
+</ParamField>
+
+<ParamField body="page_url" type="string">
+  The page the identify fired on. The browser fills it for you.
+</ParamField>
+
+You must send at least one identity signal: one of `email`, `email_sha256`, `email_md5`,
+`phone`, `phone_sha256`, `phone_md5`, `external_id`, `session_code`, `device_id`, or
+`device_global_id`. An identify that names no one is rejected with `400 IDENTITY_REQUIRED`.
+Any field TrackPlay does not know is rejected with `400 INVALID_PAYLOAD`.
+
+## The hash rule, worked
+
+You never have to hash anything: send the raw value and TrackPlay does it. Hash it yourself
+only to keep the raw value on your servers. The rule is one line and it is the same
+everywhere, so a hash you compute matches the hash TrackPlay computed from a lead form months
+earlier:
+
+```
+email_sha256 = sha256( lower( trim( email ) ) )
+```
+
+<Steps>
+  <Step title="Start with what the customer typed">
+    `  Jane@Acme.com  `
+  </Step>
+  <Step title="Trim, then lowercase">
+    `jane@acme.com`
+  </Step>
+  <Step title="SHA-256, as lowercase hex">
+    `7bb9e30283184c3b4bbbf2262a600be7165d7e6f50e424a611aa64394e7ecdb5`
+  </Step>
+</Steps>
+
+MD5 follows the same normalization (`md5(lower(trim(email)))`, 32 lowercase hex). For a phone,
+hash the number in its E.164 form (`+442079460958`), not as typed. For why both algorithms
+exist and why a raw value is what links them, see [Viewer
+identity](/identity/overview#the-two-hash-algorithms-and-why-raw-values-bridge-them).
+
+## Response
+
+On success you get `200` with the profile the identity resolved to:
+
+```json
+{ "ok": true, "profile_id": "p_8f21ba9c4d0e4f7a" }
+```
+
+<ResponseField name="ok" type="boolean">
+  `true` when the identity was written to the graph.
+</ResponseField>
+
+<ResponseField name="profile_id" type="string">
+  The profile this viewer now belongs to. Reuse it as the `profile_id` on a [custom
+  event](/api-reference/custom-events) or a conversion.
+</ResponseField>
+
+## Rate limits
+
+| Limit | Value | Env var |
+| --- | --- | --- |
+| Per IP | 120 requests per minute | `TRACKPLAY_EVENTS_IDENTIFY_RATE_LIMIT` |
+
+Over the limit returns `429`. The browser calls dedupe an identical repeat before it is sent,
+so a page that calls identify on every render does not spend the budget on the same identity
+twice.
+
+## Errors
+
+<AccordionGroup>
+  <Accordion title="400: INVALID_PAYLOAD">
+    A field failed validation, or you sent a field TrackPlay does not know. A pre-hashed value
+    that is not lowercase hex of the right length (64 for SHA-256, 32 for MD5) fails here.
+  </Accordion>
+  <Accordion title="400: IDENTITY_REQUIRED">
+    The body named no identity at all. Send at least one email, phone, `external_id`,
+    `session_code`, `device_id` or `device_global_id`.
+  </Accordion>
+  <Accordion title="429: RATE_LIMITED">
+    Too many identify requests from this IP this minute. Back off and retry.
+  </Accordion>
+  <Accordion title="503: IDENTITY_UNAVAILABLE">
+    The identity store was briefly unreachable. Nothing was recorded. Retry shortly. From the
+    browser this is swallowed, and the next event re-resolves the identity, so a page is never
+    broken by it.
+  </Accordion>
+</AccordionGroup>
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Viewer identity" icon="fingerprint" href="/identity/overview">
+    Session, device and profile, and how a hashed email finds the viewer who watched.
+  </Card>
+  <Card title="Custom Events API" icon="bolt" href="/api-reference/custom-events">
+    Land an event on the viewer's session, and carry the same identity fields on it.
+  </Card>
+  <Card title="Audience and Hot Leads" icon="user-magnifying-glass" href="/analytics/overview#audience-and-hot-leads">
+    Where an identified buyer shows up: the audience list, the profile, and the score that
+    flags the ones worth calling.
+  </Card>
+</CardGroup>

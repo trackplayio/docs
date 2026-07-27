@@ -1,0 +1,75 @@
+---
+title: "Exit intent"
+description: "Catch the viewer in the second before they leave. Show an offer while you still can."
+icon: "door-open"
+sidebarTitle: "Exit intent"
+---
+
+The viewer reaches for the back button, or their mouse drifts up to the tab bar. That is the
+last moment you have. Exit intent puts an overlay in front of them right then: a discount, a
+reminder of the offer, a "watch later" opt-in.
+
+**Video → Customize → Exit Intent.**
+
+## Triggers
+
+Pick one or more. The overlay shows the first time any of them fires.
+
+<AccordionGroup>
+  <Accordion title="Mouse leaves toward the top">
+    The pointer moves up out of the page, toward the browser chrome. The classic desktop
+    exit signal. Stored as `pointer-leave-top`.
+  </Accordion>
+  <Accordion title="Browser back button">
+    The viewer presses back. TrackPlay catches it and shows the overlay instead of letting
+    the page unload. Stored as `back-button`.
+  </Accordion>
+  <Accordion title="Tab switch">
+    The viewer switches to another tab or minimises the window. Works on mobile, where there
+    is no mouse to leave the page. Stored as `tab-blur`.
+  </Accordion>
+</AccordionGroup>
+
+## Cooldown
+
+Once the overlay has shown, it stays quiet for a set number of minutes so you never nag the
+same viewer twice in one session. The default is 10 minutes.
+
+## Design
+
+The overlay uses the same drag-and-drop canvas as your pause and end screens: a headline,
+body copy, a button, an image, a background. You design a **landscape** version and a
+**portrait** version, and the player picks the right one for the viewer's orientation.
+
+<Tip>
+  A theme sets an exit-intent card for you. Applying one overwrites this screen. Pick your
+  [theme](/player/themes) first, then edit the copy.
+</Tip>
+
+## React to it in your own code
+
+When the overlay shows, the player fires a JavaScript event so your page can do more than the
+overlay itself: reveal a coupon field, swap the headline, log it to your own analytics.
+
+```javascript
+document.addEventListener('TrackPlayReady', function (e) {
+  const player = e.detail.player;
+
+  player.on('exit-intent', function (event) {
+    // event.detail.reason is "pointer-leave-top", "back-button" or "tab-blur"
+    console.log('Exit intent fired:', event.detail.reason);
+    document.querySelector('#retention-offer').style.display = 'block';
+  });
+
+  player.on('exit-intent-dismissed', function (event) {
+    console.log('Viewer closed the exit overlay');
+  });
+});
+```
+
+See the full payload in the [events reference](/events/video-events).
+
+<Note>
+  Exit intent is on for every plan. There is nothing to turn on at the account level. Enable
+  it per video on the Exit Intent tab.
+</Note>
