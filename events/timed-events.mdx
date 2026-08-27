@@ -184,7 +184,9 @@ When configuring timed events in your dashboard, you can set:
 - **Percentage**: "Fire at 25% completion"
 
 ### Call Frequency
-- **Call once**: Event fires only once per session
+- **Call once**: Event fires once per browser, then never again for **365 days**. It is
+  remembered in a cookie, not in the session, so a returning viewer does not re-fire it.
+  Clearing cookies resets it.
 - **Call multiple times**: Event fires every time the trigger point is reached
 
 ### Returning User Behavior

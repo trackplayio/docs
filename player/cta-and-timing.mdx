@@ -64,7 +64,9 @@ Fire Facebook, Google, or custom code at a point in the video.
     - **Custom**: raw HTML or JavaScript.
   </Step>
   <Step title="Decide if it repeats">
-    Leave **call once** on to fire at most once per session.
+    Leave **call once** on to fire at most once per browser. Note this is not per session:
+    it writes a cookie that lasts **365 days**, so a viewer who comes back next week will
+    not fire it again.
   </Step>
 </Steps>
 

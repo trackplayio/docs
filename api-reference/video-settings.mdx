@@ -47,8 +47,12 @@ payload and merges it recursively over the current settings with PHP's
 <Note>
   Your payload is filtered to the option groups the video already exposes before anything
   else happens. A top-level group outside that set is **dropped silently**: no error, no
-  `422`, and a `200` response that looks like it worked. `pitch_time_options` is the one
-  group that behaves this way today, so it cannot be set through this API at all.
+  `422`, and a `200` response that looks like it worked.
+
+  **Five groups behave this way today and cannot be set through this API at all**, even
+  though the validation schema accepts them: `actions_options`, `cloak_options`,
+  `headline_options`, `pitch_time_options` and `share_options`. Send any of them and you
+  get a `200` with nothing changed. Use the dashboard editor for those.
 
   Nested keys are not filtered. Only the top-level group name has to be one the video
   already carries, which is why an option with no dashboard toggle can still be set here
@@ -63,7 +67,8 @@ this only bites if your existing settings somehow do not already satisfy them; a
 partial update to unrelated fields will not trip it.
 
 Any top-level key you send that is not a real option group is dropped silently rather
-than rejected: only the ~35 known columns are read out of your request body.
+than rejected: only the option groups the video already carries are read out of your
+request body, which is the same filter that drops the five groups listed above.
 
 ## Save a draft
 

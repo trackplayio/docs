@@ -337,8 +337,11 @@ twice.
     The body named no identity at all. Send at least one email, phone, `external_id`,
     `session_code`, `device_id` or `device_global_id`.
   </Accordion>
-  <Accordion title="429: RATE_LIMITED">
+  <Accordion title="429: Too many requests">
     Too many identify requests from this IP this minute. Back off and retry.
+
+    This one carries no error code. The body is `{"error": "Too many requests"}`, so detect
+    it on the `429` status rather than on an error string.
   </Accordion>
   <Accordion title="503: IDENTITY_UNAVAILABLE">
     The identity store was briefly unreachable. Nothing was recorded. Retry shortly. From the

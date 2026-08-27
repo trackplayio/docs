@@ -42,14 +42,18 @@ Two places, one set of rules:
     </Warning>
   </Accordion>
 
-  <Accordion title="Require domain allowlist (off by default)">
-    Refuses playback unless the embedding page's hostname is in your [domain
-    whitelist](/configuration/domain-whitelist).
+  <Accordion title="Domain allowlist (always on, nothing to switch)">
+    There is no toggle here. Your [domain allowlist](/configuration/domain-whitelist) is
+    enforced on **every** manifest request, whether or not content protection is on.
 
-    <Warning>
-      An empty domain list allows **every** site. Turning this on without adding domains
-      protects nothing.
-    </Warning>
+    Adding a domain in **Settings → Domains** is the opt-in. While the list is empty, every
+    site is allowed. Add one domain and only the domains you list can play the video.
+
+    <Note>
+      This used to be a switch. It is not one any more, because the enforcement moved to
+      the manifest and now runs unconditionally. If you are looking for a "require domain
+      allowlist" checkbox, that is why you cannot find it.
+    </Note>
   </Accordion>
 
   <Accordion title="Country rules">

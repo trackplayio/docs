@@ -85,8 +85,10 @@ console.log('Current settings:', {
 Control visual appearance and UI elements:
 
 ```javascript
-// Colors (limited effect)
-player.setOption('style_options.main_color', '#ff6b35'); // Only affects video time display
+// Colors
+// Recolors the whole controls chrome: buttons, settings menu, volume slider and the
+// time display. Not the time display alone.
+player.setOption('style_options.main_color', '#ff6b35');
 
 // Control buttons (show/hide)
 player.setOption('style_options.corner_play_button', true);
@@ -410,7 +412,9 @@ const color = player.getOption('style_options.main_color');
 Register a custom handler for specific option types.
 
 **Parameters:**
-- `type` (string) - Root option type (must not conflict with existing types)
+- `type` (string) - Root option type. Nothing stops you reusing an existing name, and no
+  error is raised if you do: registering `style_options` silently **replaces** the built-in
+  handler for the rest of the page's life. Pick a name of your own.
 - `handler` (function) - Handler function `(path, value, oldValue) => void`
 
 **Returns:** `boolean` - Success status

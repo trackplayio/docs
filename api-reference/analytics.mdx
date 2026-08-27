@@ -131,7 +131,7 @@ curl "https://app.trackplay.io/api/v1/videos/481/analytics/events?event_type=con
     "total": 4812,
     "data": [
       {
-        "event_type": "play",
+        "event_type": "video-play",
         "event": "video-play",
         "session_code": "3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22",
         "watch_seconds": 0,
@@ -215,8 +215,19 @@ it is ready, then download.
   </Step>
   <Step title="Poll until it is ready">
     `GET /exports/{export}` returns the current status. While it builds, `status` is
-    `pending` and `download_url` is `null`. When it finishes, `status` is `ready` and
-    `download_url` carries the link.
+    `processing` and `download_url` is `null`. When it finishes, `status` is `ready` and
+    `download_url` carries the link. A failed build returns `failed`.
+
+    <Warning>
+      **Treat an early `404` as "not started yet", not as "gone".** The export only
+      becomes readable once its queued job picks it up. Poll in the window between
+      creating it and the job starting and you get `404 EXPORT_NOT_FOUND`, the same
+      response you would get for an id that expired. Retry a few times before you decide
+      an export is really missing.
+
+      The `status: "pending"` you get back from `POST /exports` is the creation
+      acknowledgement only. It is never returned by this endpoint.
+    </Warning>
 
     ```bash curl
     curl https://app.trackplay.io/api/v1/exports/tpex_9f2c1a7e4d3b4a11 \

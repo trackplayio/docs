@@ -351,8 +351,12 @@ characters. `Quiz Completed!` and `quiz completed` both become `quiz_completed`.
 | Properties per event | 20 (keys ≤ 40 chars, values ≤ 100 chars) |
 | `value` range | ±1,000,000,000 |
 
-Over the limit returns `429 RATE_LIMITED`. Back off and retry: with your `event_id`, the
-retry is free.
+Over the limit returns `429`. Back off and retry: with your `event_id`, the retry is free.
+
+The two limits answer differently, so key your handling off the `429` status, not off the
+body. The per-workspace limit returns `{"error": "RATE_LIMITED", "message": "Too many
+events for this workspace."}`. The per-IP limit returns `{"error": "Too many requests"}`
+with no error code.
 
 ## Errors
 
@@ -380,8 +384,10 @@ retry is free.
   <Accordion title="422: TOO_MANY_EVENT_NAMES">
     You have hit the 100-name cap. The response tells you how many names are in use.
   </Accordion>
-  <Accordion title="429: RATE_LIMITED">
-    Too many events for this workspace or IP.
+  <Accordion title="429: rate limited">
+    Too many events for this workspace or IP. The workspace limit answers with
+    `error: "RATE_LIMITED"`; the per-IP limit answers `{"error": "Too many requests"}` and
+    carries no code, so match on the status.
   </Accordion>
   <Accordion title="500: WRITE_FAILED">
     We could not write the event. Retry with the same `event_id`.

@@ -21,10 +21,21 @@ Each pixel configuration creates a corresponding event that you can listen to.
 
 ## Event Naming Convention
 
-Pixel events follow this naming pattern based on the actual code:
+Pixel events follow this naming pattern:
 - **Facebook pixels**: `pixel_event_{FB_ID}`
 - **Google pixels**: `pixel_event_{GOOGLE_ID}`
-- **Custom pixels**: `pixel_event_{CONTENT_HASH}`
+- **Custom pixels**: `pixel_event_{THE_ENTIRE_PIXEL_CODE}`
+
+<Warning>
+  A custom pixel's event name embeds the **whole code block you pasted**, verbatim and
+  unhashed. It is not a hash, a slug, or a name you choose, so it is effectively unusable
+  as a listener key: you would have to reproduce your entire pixel snippet as the event
+  name, whitespace included.
+
+  If you need to react to a custom pixel firing, use a [timed
+  event](/events/timed-events) instead and listen for that. Facebook and Google pixels are
+  fine, because their names are just the pixel id.
+</Warning>
 
 ## Event Data Structure
 

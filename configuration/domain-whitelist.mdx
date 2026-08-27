@@ -89,7 +89,7 @@ When a domain is blocked:
 
 ```
 Video Unavailable
-This video cannot be played from this domain. Contact the video owner for access.
+This video cannot be played.
 ```
 
 The validation component:
@@ -99,10 +99,18 @@ The validation component:
 - Tracks 'domain-blocked' event for analytics
 
 ### Error Handling
-If domain validation fails due to network issues:
-- Videos will play normally (fail-safe approach)
-- Error is logged to browser console
-- Consider implementing retry logic in your integration
+Only a genuine **network** failure fails open:
+- The browser cannot reach the check at all: the video plays, and the error is logged to
+  the console
+- The page URL cannot be parsed, or the check itself errors server-side: playback is
+  **blocked**, not allowed
+
+<Note>
+  This overlay is not the thing protecting your video. Playback is gated server-side, on
+  every manifest request, and that gate fails closed. The overlay only explains to the
+  viewer what happened, so a "blocked" message is never proof the video was actually
+  served, and its absence is never proof the allowlist was bypassed.
+</Note>
 
 ### Development & Testing
 During development, you may want to:
