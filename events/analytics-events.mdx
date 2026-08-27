@@ -1,0 +1,286 @@
+---
+title: "Analytics Events"
+description: "The beacon your player sends on every play, pause, click, and conversion signal. This is what actually populates your dashboard."
+icon: "waveform"
+---
+
+Your Analytics tab, your retention curve, your Custom Metrics: none of them read the page
+events described in [Video Events](/events/video-events), [Timed Events](/events/timed-events),
+[User Events](/events/user-events), or [Pixel Events](/events/pixel-events). Those pages
+document a JavaScript API you subscribe to on your own page. This page documents a
+different system entirely: the beacon the player sends to TrackPlay in the background,
+which is what every report you read is built from.
+
+You do not call anything on this page. The player sends these events on its own. Read
+this page to understand what a metric is counting, not to integrate against it.
+
+## Three systems, one player
+
+| System | What it is | Where you use it |
+| --- | --- | --- |
+| Page events | `CustomEvent`s the player dispatches on its own container element (`player.on('play', ...)`). | Subscribe on your page to react to what the viewer is doing: reveal an offer, toggle a class, fire your own script. |
+| Analytics events (this page) | The beacon the player sends to TrackPlay's ingest service, `e.trackplay.io`, on a fixed schedule. | Nothing you write. This is what fills your Analytics dashboard, your retention curve, and any Custom Metric you build. |
+| Public player API | A separate control surface, `window.TrackPlay.get(containerId)`, with its own event bus and its own names (`time-update`, `fullscreen-entered`, and others distinct from the page-event names). | Build a custom player UI: your own play button, your own volume slider, your own fullscreen control. |
+
+The three systems share almost no event names. `play` on the page-events system and
+`video-play` on the analytics system fire from the same click, but they are two separate
+dispatches with two separate payloads. Do not expect one to tell you about the other.
+
+<Note>
+The public player API is not documented here. If you are building a custom control
+surface against `window.TrackPlay`, treat that as a separate integration with its own
+event names, not an extension of the events on this page.
+</Note>
+
+## How delivery works
+
+The player never sends one event at a time. It queues events and flushes the queue in one
+of three ways:
+
+1. **Synchronous, on the spot.** `cta-clicked` and `checkout-click` flush the queue
+   immediately, before the function returns. Both usually precede a navigation (a click
+   through to your cart), so the beacon has to leave before the page does.
+2. **Fast flush, within 2 seconds.** `page-view`, `video-play`, `video-unmute`,
+   `video-continue`, `video-restart`, `video-error`, `video-autoplay`, and
+   `video-autoplay-sound` queue, then flush on a 2-second timer. Fast enough to treat as
+   immediate, not fast enough to block the click.
+3. **Batched, up to 10 seconds.** Everything else queues and flushes on a running
+   10-second interval, or sooner if the viewer leaves the page first.
+
+`page-exit` and `page-reload` are a special case of the third tier: the exit handler
+flushes the whole queue the moment it fires, so nothing queued in the final 10 seconds is
+lost when the tab closes.
+
+<Warning>
+This is at-least-once delivery over `navigator.sendBeacon`, with a `fetch(..., {
+keepalive: true })` fallback if the browser refuses the beacon (quota or payload size). A
+beacon can be lost if both fail. It is never intentionally duplicated, but a retried
+request is not de-duplicated server-side either.
+</Warning>
+
+## Fields on every event
+
+Every event below carries this envelope in addition to its own fields.
+
+<ResponseField name="device_id" type="string (uuid)">
+  The viewer's device, stable for a year.
+</ResponseField>
+<ResponseField name="session_id" type="string (uuid)">
+  The current watch session. Rotates after 30 minutes of inactivity or a 12-hour cap.
+</ResponseField>
+<ResponseField name="workspace_code" type="string (uuid)">
+  Your workspace.
+</ResponseField>
+<ResponseField name="video_code" type="string (uuid)">
+  The video.
+</ResponseField>
+<ResponseField name="video_time" type="number">
+  Current playback position, in seconds, at the moment the event fired.
+</ResponseField>
+<ResponseField name="time_on_page" type="number">
+  Milliseconds since the visit started.
+</ResponseField>
+<ResponseField name="video_orientation" type="string">
+  The viewer's viewport orientation, `portrait` or `landscape`.
+</ResponseField>
+<ResponseField name="mode" type="string">
+  Delivery mode: `standalone` or `runtime` (shared-runtime embed).
+</ResponseField>
+<ResponseField name="split_test_id" type="string">
+  Set only when the container is running a split test. `split_test_variation_id` rides
+  alongside it. Absent otherwise.
+</ResponseField>
+
+Attribution fields (`page_url`, `referrer_domain`, UTM and click-id data, `custom_data`)
+ride on every event too, captured once when the tracker loads and stamped onto everything
+after. They are not repeated in the per-event tables below.
+
+## Playback events
+
+The lifecycle of a single view: load, play, watch, pause, leave.
+
+| Event | Fires when | Extra payload | Delivery |
+| --- | --- | --- | --- |
+| `page-view` | The tracker loads on the page. | `pre_time_on_page` (number, only if the viewer was on the page before the player mounted) | Fast |
+| `video-play` | Play starts, first time in the session. | `ttp` (number, ms from visit start to first play) | Fast |
+| `video-resume` | Play starts again after the first play, whether the viewer clicked play or the tab came back from the background. | `ttp` on the repeat-click path, or `source` (`visibilitychange` \| `pageshow` \| `page-lifecycle:resume`) on the tab-return path. Never both on the same event. | Batched |
+| `video-unmute` | Viewer unmutes from the autoplay overlay. | `ttp` | Fast |
+| `video-continue` | Viewer clicks "Continue watching" on the returning-visitor overlay. | `resume_time`, `initial_watch_date`, `ttp` | Fast |
+| `video-restart` | Viewer clicks "Restart" on the same overlay. | `initial_watch_date`, `ttp` | Fast |
+| `video-pause` | The `pause` event fires on the video element. | `pause_reason` | Batched, currently rejected. See below. |
+| `video-time` | Every 10 seconds of playback, and once more on exit. | `behaviour`, a snapshot of merged watched ranges, attention seconds, sound-on seconds, and scroll depth. Collection only. No stat is computed from it yet. | Batched |
+| `video-seek` | The viewer scrubs the timeline. Button-driven skips are excluded here so they are not double-counted. | `from` (number, the position seeked away from) | Batched |
+| `video-forward` / `video-rewind` | The ±10 second skip buttons. | None | Batched |
+| `video-orientation` | The video's rendered orientation flips. | None (the orientation itself rides in the base `video_orientation` field) | Batched |
+| `video-loop` | Playback reaches the end and loop is on. | None | Batched |
+| `video-loading` | The loading overlay shows. | None | Batched |
+| `video-loaded` / `video-ready` / `video-loaded-mp4` | The HLS manifest or the MP4 source is ready to play. | None | Batched |
+| `video-autoplay` | Muted autoplay starts. | `forced_autoplay` (boolean, optional) | Fast |
+| `video-autoplay-sound` | Autoplay unlocks sound without a click. | `via` (`slot-transfer` \| `background-probe`) | Fast |
+| `video-resume-from-thumbnail` / `video-play-from-thumbnail` | Play starts from the returning-visitor thumbnail overlay. | `resume_time` on the resume variant | Batched |
+| `showed-continue-watching` | The continue-watching overlay is shown. | None | Batched |
+| `video-timed-event` | A quartile crosses (25/50/75/100%), or a creator-configured timed action fires. | `custom_event_name`: `quartile_25/50/75/100` for the automatic milestones, or your own configured name. A `_subsequent` suffix marks the returning-visitor variant. | Batched |
+| `pitch-time-reached` | The dedicated Pitch Time marker fires, once per session. | `pitch_time_seconds` | Batched |
+| `page-exit` / `page-reload` | The viewer leaves or reloads the page, detected primarily on the tab going hidden. | None | Immediate flush |
+
+<Warning>
+**`video-pause` is being lost on most videos right now.** Recent player builds attach a
+`pause_reason` field to every pause. The current ingest schema does not recognize that
+field, and an unrecognized field on a known event fails the whole event rather than the
+one field, because partial rows are never stored.
+
+This lands per video, not all at once, because each video carries the player build it was
+last compiled with. A video compiled before the change still records pauses normally. A
+video compiled since then records none. Pause volume began dropping on 4 August 2026 and
+has fallen by roughly 95%, and it will keep falling as more videos are recompiled.
+
+Treat any pause-derived number as an undercount until this is fixed, and do not compare a
+pause figure across that date. Play, resume, seek and the rest of the stream are
+unaffected, as is the page-level `paused` event in
+[Video Events](/events/video-events), which is a separate dispatch.
+</Warning>
+
+## Engagement events
+
+Interaction with the player controls, the page around it, and signals that someone is
+probing rather than watching.
+
+| Event | Fires when | Extra payload | Delivery |
+| --- | --- | --- | --- |
+| `quality-change` | Viewer manually switches HLS rendition. | `quality` (string or number) | Batched |
+| `volume-mute-toggle` | Mute button clicked. | `muted` (boolean) | Batched |
+| `volume-slider-change` | Volume slider dragged. | `volume` (a 0 to 1 fraction). The player sends this as a percent string (`"50%"`); the ingest service normalizes it. | Batched |
+| `volume-preset` | A volume preset clicked. | `volume`, same percent-string handling as above. | Batched |
+| `progress-bar-drag` | The progress bar is scrubbed. | None today. The schema can accept a `from`/`to` pair, but the player does not send one yet. | Batched |
+| `playback-speed` | Playback speed changed. | `speed` (number) from the speed menu. The options-panel control point fires the same event without a `speed` value. | Batched |
+| `page-click` | A click on any `<a>` or `<button>` outside the player, on the top document only. Capped at 30 per session, throttled to one per 300ms. | `el_tag_name`, `el_href` (host and path, no query string), `el_text` (40 characters) | Batched |
+| `scroll` | The page is scrolled, if content engagement is on (the default). | `scroll_direction`, `scroll_y`, `scroll_velocity` | Batched |
+| `hover` | An element is hovered. | `el_tag_name`, `el_id`, `el_text`, `el_hover_duration` | Batched |
+| `click` | A tracked element is clicked. | `el_tag_name`, `el_id`, `el_text`, `el_href` | Batched |
+| `switched-tab` | The browser tab loses or regains focus. | `tab_this` (boolean), `time_away` (number, ms) | Batched |
+| `pip-enter` / `pip-exit` | Picture-in-picture toggled. | None | Batched |
+| `chapter-changed` | Chapter navigation. | `chapter_index`, `chapter_title`, `from_index` | Batched |
+| `smart-pause` | The player itself pauses playback, not the viewer. | `reason` | Batched |
+| `pause-blocked` | A configured "disable pause" setting blocks a pause attempt. | None | Batched |
+| `blocker-state` | A content-blocker overlay changes state. | `blocker_from`, `blocker_to`, `blocker_reason` | Batched |
+| `branded-link-click` | The "Powered by TrackPlay" link in the context menu is clicked. | `variant`, `href` | Batched |
+| `ai-segment-loaded` / `ai-segment-played` | An AI Voice Segment (a per-viewer TTS insert) loads or plays. | `segment_id`, `start_time`, `end_time` | Batched |
+| `headline-chosen` | An A/B headline variant resolves for the viewer. | `headline_id` | Batched |
+| `domain-blocked` | The domain allowlist rejects the page the player is running on. | `hostname`, `reason` | Batched |
+| `video-access-attempt` / `video-unauthorized-access` | Something reads or writes a property on the raw `<video>` element directly, bypassing the player. | `property`, plus `value` on the write attempt | Batched |
+| `suspicious-dom-access` | DevTools-open or selector-probing heuristics trip. | `type`, `outer_width`/`outer_height`, `inner_width`/`inner_height`, `selector`, `attempts`, depending on which heuristic fired | Batched |
+
+<Tip>
+`turbo-variant` and `headline-chosen` are both variant-assignment signals, but only
+`headline-chosen` lives here. `turbo-variant` is under [Experiment
+events](#experiment-events) because it carries an A/B arm assignment, not a click.
+</Tip>
+
+## Conversion events
+
+The signals that connect a session to intent, and eventually to a sale.
+
+| Event | Fires when | Extra payload | Delivery |
+| --- | --- | --- | --- |
+| `checkout-click` | A click on a cart link your integration already tagged with the session id. Tier-1 buying intent. | `integration` (the cart key), `el_text`, `el_href` (query string stripped, since it carries the session id) | Immediate |
+| `cta-shown` / `cta-dismissed` / `cta-variant` | An in-player CTA card shows, is dismissed, or resolves an A/B variant. | `card_id`, `variant_index` | Batched |
+| `cta-clicked` | An in-player CTA card is clicked, **or** a page CTA you tagged outside the player is clicked. Two producers, one event name: the in-player variant carries `card_id`/`variant_index` and leaves `cta_id` null; the page variant carries `cta_id`/`cta_label`/`cta_value`/`el_href` and leaves `card_id` null. | See above | Immediate |
+| `custom` | You call `window.trackplay.track(name, props)`, use the standalone `tp-events.js` script, or post server-to-server. Any event your player never saw on its own: a lead form, a quiz completion, an upsell. | `custom_event_name`, optional `event_value`, `custom_data` | Batched (browser calls). See the [Custom Events API](/api-reference/custom-events) for the server-to-server path. |
+
+<Note>
+A custom event is not a conversion. `event_value` is reported on its own and never feeds
+revenue, ROAS, EPC, or RPV.
+</Note>
+
+## Experiment events
+
+Variant assignment inside the player. This is not the same system as a
+[split test](/split-tests/overview), which assigns a variant before the player ever
+loads.
+
+| Event | Fires when | Extra payload | Delivery |
+| --- | --- | --- | --- |
+| `turbo-variant` | A playback-speed A/B arm is assigned, once per session. | `variant` (the arm index, a number), `speed`, `source` (`sticky` for a returning visitor's saved arm, `new` for a fresh assignment) | Batched |
+| `headline-chosen` | An A/B headline variant resolves for the viewer. | `headline_id` | Batched |
+
+## Quality events
+
+`video-error` is the only event in this group, and it carries the most payload of any
+event on this page.
+
+<ResponseField name="error_type" type="string" required>
+  A short label for the error class.
+</ResponseField>
+<ResponseField name="error" type="string" required>
+  The error message.
+</ResponseField>
+<ResponseField name="severity" type="string">
+  One of `fatal`, `error`, `warning`, `info`.
+</ResponseField>
+<ResponseField name="error_source" type="string">
+  One of `encoding`, `network`, `drm`, `browser`, `recovered`, `unknown`.
+</ResponseField>
+<ResponseField name="fatal" type="boolean">
+  Whether playback stopped. A recoverable HLS error that resolves itself is reported as
+  not fatal, even if the underlying error code looks severe.
+</ResponseField>
+<ResponseField name="recovered" type="boolean">
+  Whether the player's own recovery logic resolved the error.
+</ResponseField>
+<ResponseField name="rendition" type="string">
+  The quality level active when the error happened.
+</ResponseField>
+<ResponseField name="network_status" type="number">
+  The HTTP status of the failed request, when the error is network-related.
+</ResponseField>
+<ResponseField name="buffer_state" type="string">
+  Buffer health at the moment of the error.
+</ResponseField>
+<ResponseField name="error_hls_content" type="string">
+  Extra HLS diagnostic context, when available.
+</ResponseField>
+
+<Note>
+`video-error` is deduplicated client-side: the same distinct combination of type, detail,
+`fatal`, and `recovered` is sent once per page view, not once per occurrence. A flapping
+network connection will not flood your reports with the same error.
+</Note>
+
+This event is sent immediately, on the fast-flush tier, not batched with the rest of the
+Quality data.
+
+## Event names that will not appear in your reports
+
+Two different failure modes produce a name that looks real but never shows up in your
+data. Knowing which one you are looking at saves you a support ticket.
+
+<AccordionGroup>
+  <Accordion title="Never fires">
+    These names exist in TrackPlay's own configuration but no code path in the current
+    player ever sends them. If you see one referenced anywhere outside this page, treat
+    it as inactive: `video-end`, `video-oof`, `video-resume-screen`, `video-fullscreen`,
+    `video-loaded-webm`. There is no dedicated "video finished" event. Completion is
+    computed from the watch-time data on `video-time`, not from a single end-of-video
+    signal.
+  </Accordion>
+  <Accordion title="Fires, but dropped before storage">
+    The player sends these, but the current release does not forward them into your
+    reports, either because the browser-side event list does not recognize the name or
+    because the ingest service does not: `captions-change` (a caption-language switch),
+    `exit-intent-triggered` (the internal trigger behind the `exit-intent` page event,
+    which itself still fires normally), `video-unmute-button` (the manual unmute button,
+    distinct from the `video-unmute` event above, which does work), `video-completed`
+    (fired when a video is marked complete, at 95% watch time or on end), and the AI
+    Dubbing language, subtitle, and audio-fallback events. If you are running AI Dubbing,
+    do not expect language-switch or subtitle-toggle data in your reports yet.
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+- [Video Events](/events/video-events), [Timed Events](/events/timed-events), [User
+  Events](/events/user-events), and [Pixel Events](/events/pixel-events) document the
+  page-level system, not this one.
+- [Custom Metrics](/analytics/custom-metrics) let you chart any of the events above by
+  name.
+- [Analytics](/analytics/overview) is where these events surface as reports.

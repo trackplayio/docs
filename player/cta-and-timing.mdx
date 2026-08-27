@@ -120,6 +120,26 @@ or on every subsequent play.
   One click adds it.
 </Tip>
 
+## The Pitch marker
+
+Your retention graph and funnel report both show a **Pitch** step, a marker for the
+moment your offer actually lands. It comes from a mechanism separate from every timed
+CTA or event on this page.
+
+A timed event or CTA card *shows or hides something on the page*. Pitch Time is
+different: it fires its own one-per-session `pitch-time-reached` event the moment
+playback crosses a configured second, and TrackPlay's retention chart, funnel and lead
+scoring are all built to read that event specifically. Setting timed events at the
+second your pitch starts does not draw the Pitch marker. Only `pitch-time-reached` does.
+
+<Warning>
+  There is no tab for this on the Customize screen, and it is not reachable through the
+  Video Settings API either: `pitch_time_options` is not one of the option groups that
+  API accepts. Setting it today means asking TrackPlay to configure it for your video.
+  Once it is set, the Pitch marker appears on the retention graph and the funnel's
+  `pitch_reached` step starts counting, with no further action from you.
+</Warning>
+
 ## Tracking CTAs on your own page
 
 If your buy button lives on the page rather than in the player, TrackPlay can still

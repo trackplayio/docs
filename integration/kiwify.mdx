@@ -1,0 +1,114 @@
+---
+title: "Kiwify"
+description: "Connect Kiwify so every approved order, renewal, refund and chargeback is credited back to the video that made it."
+icon: "cart-shopping"
+sidebarTitle: "Kiwify"
+---
+
+TrackPlay tags every Kiwify checkout link on your page with the viewer's session, carried
+on `sck` or `src`. Kiwify posts each order back with that value attached, signed with your
+webhook token, and TrackPlay joins it to the play that produced it.
+
+## Connect it
+
+<Snippet file="connect-integration.mdx" />
+
+Pick **`sck`** or **`src`**. Both are guaranteed to come back on Kiwify's webhook inside
+`TrackingParameters`. Kiwify also accepts `s1`, `s2` and `s3` at checkout, but those are
+undocumented on the webhook payload itself, so do not pick them as your tracking
+parameter: a value Kiwify does not echo back cannot attribute a sale.
+
+## Set up the postback URL
+
+Copy the URL from the **Postback Setup** window. In Kiwify, go to **Apps → Webhooks**,
+create a webhook, paste the URL in, and select the order events (approved, renewed,
+refunded, canceled, chargeback).
+
+<Warning>
+  Your postback URL is a secret. Anyone holding it can post fake conversions into your
+  workspace. Give it to Kiwify and nobody else.
+</Warning>
+
+Kiwify has no sandbox. Verify the integration by pushing one real, low-price product
+through checkout rather than waiting for a test-mode order that does not exist.
+
+## Signing token
+
+Kiwify signs every webhook with your token, using HMAC-SHA1 over the request. Unlike some
+of TrackPlay's other cart integrations, this token is not optional: paste it when you
+connect, or Kiwify's postbacks are rejected outright.
+
+Kiwify delivers the signature in the URL, as a `?signature=` query parameter, not a
+header. TrackPlay checks it there.
+
+Find the token on the same **Apps → Webhooks** screen where you created the webhook.
+
+<Note>
+  If you rotate the token in Kiwify, paste the new one into TrackPlay in the same
+  sitting. Postbacks signed with a token TrackPlay does not have are rejected.
+</Note>
+
+## Which events are recorded
+
+| Kiwify event | Recorded as |
+| --- | --- |
+| `order_approved` | Sale |
+| `subscription_renewed` | Rebill |
+| `order_refunded` | Refund |
+| `chargeback` | Chargeback |
+| `subscription_canceled` | Cancellation |
+
+Everything else Kiwify can send is acknowledged and not recorded, because none of it is
+money moving: a boleto or PIX issued but not yet paid, a rejected order, and a
+subscription gone late on payment. A sale only counts once Kiwify's own `order_status`
+confirms it is paid.
+
+Kiwify's dashboard "Test Webhook" button fires events indistinguishable from real ones
+except for their fake order IDs. Kiwify sends no test flag, so a test send from that
+button lands in your revenue numbers like any other sale. Use a real low-price checkout
+to verify the integration instead.
+
+<Warning>
+  Kiwify's Conta Digital (banking) webhook is a different product, signed with Ed25519 and
+  carrying cash-in and cash-out events. TrackPlay's Kiwify integration is the checkout
+  webhook only. Do not point your banking webhook at this URL.
+</Warning>
+
+## What TrackPlay does to your links
+
+Every link and form on your page pointing at a `kiwify.com` checkout gets your chosen
+parameter added automatically, set to the viewer's session id.
+
+```
+https://pay.kiwify.com.br/abc123
+→ https://pay.kiwify.com.br/abc123?sck=<session>
+```
+
+TrackPlay also appends its own `tp_ck` attribution key to Kiwify links, the same as it
+does everywhere else on the page. Kiwify does not read `tp_ck`, so it costs you nothing:
+it is there so cross-device and cross-session matching keeps working if you ever add a
+second integration that does read it.
+
+## When it does not work
+
+<AccordionGroup>
+  <Accordion title="Status is stuck on 'Not configured'">
+    No postback has arrived yet. Check the webhook is saved under **Apps → Webhooks** in
+    Kiwify, that the order events are selected, and push a real order through.
+  </Accordion>
+  <Accordion title="Postbacks are rejected">
+    The webhook token does not match, or the `?signature=` value on the request is
+    missing. Re-copy the token from Kiwify (a trailing space is enough to break it) and
+    save again.
+  </Accordion>
+  <Accordion title="Sales arrive with no video attached">
+    The link was not tagged. Confirm your buy button points at a `kiwify.com` checkout URL
+    and that no redirect in between strips the query string. A sale made from a link you
+    built by hand, or an organic one, has no session to join to and shows up unattributed.
+  </Accordion>
+  <Accordion title="A sale is missing its tracking parameter">
+    Kiwify only guarantees `sck` and `src` on the webhook. If you or an affiliate used
+    `s1`, `s2` or `s3` on the checkout link instead, Kiwify accepted it at checkout but
+    never sends it back, so TrackPlay has nothing to join the sale to.
+  </Accordion>
+</AccordionGroup>

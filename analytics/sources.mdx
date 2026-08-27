@@ -1,0 +1,228 @@
+---
+title: "Sources"
+description: "See which platform, affiliate, or page sent a viewer, ranked by what they actually paid, not by how many of them showed up."
+icon: "coins"
+---
+
+A play tells you someone watched. It does not tell you who sent them, or whether that
+person converts. The Sources tab does both: it classifies every session to one traffic
+platform, then ranks affiliates, domains, and pages by revenue instead of volume.
+
+Open a video and click **Sources**. Two more pieces of the same picture live on
+**General**: the Traffic Quality card (how much of this traffic is real) and the Custom
+Data breakdown (any URL parameter you send, broken into rows).
+
+## How a session gets classified
+
+Every session gets exactly one `traffic_source` value, decided once on the first event
+and carried through the whole session, including the conversion. TrackPlay checks seven
+signals in a fixed order and stops at the first one that answers. A later, weaker signal
+never overrides an earlier, stronger one.
+
+| Order | Signal | Wins when |
+| --- | --- | --- |
+| 1 | **Declared ad channel** | You added the optional `ef_channel` parameter to a campaign and it expanded. |
+| 2 | **Google delivery network** | You installed the Google Ads final URL suffix and Google expanded `{network}`. |
+| 3 | **Platform click id** | The URL carried `fbclid`, `gclid`, `ttclid`, or another platform click id. |
+| 4 | **UTM parameters** | `utm_source` matches a known platform, or `utm_medium` is an email variant. |
+| 5 | **Affiliate id** | The URL carried an affiliate network's id parameter (`hop`, `aff`, `aff_id`, and others). |
+| 6 | **Share link** | The session landed on TrackPlay's own public share page (`/v/{token}`). |
+| 7 | **Referrer domain** | The browser reported a `document.referrer` that is not the page's own domain. |
+| 8 | **Direct or Unknown** | See below. |
+
+<Note>
+  A declared channel and a delivery network are not competing signals, they refine each
+  other. A `gclid` proves the click came from Google Ads and nothing more. The `{network}`
+  parameter proves it was delivered on YouTube specifically. Both facts can be true at
+  once: a campaign labeled `youtube` can still show `ad_network = video_partners`,
+  meaning it ran on a Google video-partner site, not on youtube.com itself. TrackPlay
+  keeps both rather than collapsing them into one.
+</Note>
+
+### Direct is a fact, Unknown is a gap
+
+Once a session clears the classifier with no referrer, no UTM, no click id, no affiliate
+id, and no share link, TrackPlay checks whether it actually captured attribution data for
+that session at all. If it did, and every signal came back genuinely empty, the session
+is labeled **Direct**. That is a real claim: this viewer typed your URL, used a bookmark,
+or opened a message with no tracking parameters.
+
+If the session carries no attribution data to check in the first place, the label is
+**Unknown**, never Direct. TrackPlay does not guess.
+
+<AccordionGroup>
+  <Accordion title="Why the referrer is often empty, and that is normal">
+    Affiliate hoplink redirect chains and in-app browsers on Facebook and TikTok drop
+    `document.referrer` on the vast majority of clicks that pass through them. An empty
+    referrer on affiliate-driven traffic is expected, not a tracking failure.
+  </Accordion>
+  <Accordion title="A referrer equal to your own domain is not counted as a referral">
+    If the reported referrer is the same domain as the page the video is embedded on,
+    TrackPlay treats that as internal navigation, not an acquisition source, and falls
+    through to the next signal instead of reporting a referral from yourself.
+  </Accordion>
+</AccordionGroup>
+
+## Click id parameters captured
+
+These platform click ids are recognized at step 3 of the classifier. Each one also
+identifies the ad platform for the **Ad Platform** column, independent of which specific
+surface delivered the click.
+
+<CodeGroup>
+```text Click id parameters
+fbclid, gclid, gclsrc, wbraid, gbraid, dclid, ttclid,
+msclkid, twclid, sccid, yclid, li_fat_id, epik, rdt_cid,
+qclid, tblci, dicbo, obclid, rc_uuid,
+irclickid, cjevent, ps_xid, gsxid
+```
+</CodeGroup>
+
+`sccid` is Snapchat's own `ScCid` parameter, matched case-insensitively. `irclickid`,
+`cjevent`, `ps_xid`, and `gsxid` all identify traffic as affiliate-sourced rather than
+naming a specific ad platform, since they come from affiliate networks (Impact, CJ,
+PartnerStack) rather than paid platforms.
+
+## The tables
+
+**Sources** opens with a tabbed breakdown, then four ranked reports. All five read the
+same economics for every row: sessions, play rate, average watch time, conversions,
+conversion rate, revenue, and four money columns.
+
+| Report | Groups sessions by |
+| --- | --- |
+| Traffic breakdown (tabs) | Traffic Source, Ad Platform, Ad Network, Ad Channel, UTM Source, UTM Medium, UTM Campaign |
+| Traffic Sources | The classified platform (Meta, Google, YouTube, TikTok, and so on) |
+| Best Performing Affiliates | The affiliate id on the session |
+| Top Referring Domains | The referrer domain |
+| Top Pages | The page the video was watched on |
+
+<Note>
+  **Traffic Sources** and **Top Pages** are not the same report asking the same question
+  twice. The referring-domain report is empty on almost all of this traffic, because
+  hoplink chains and in-app browsers strip the referrer before it ever reaches TrackPlay.
+  Top Pages groups by the page your player actually loaded on instead, which is populated
+  on effectively every session, so it is the report that answers "which of my pages
+  converts" when Top Referring Domains cannot.
+</Note>
+
+### Ad Platform, Ad Network, and Ad Channel are three different questions
+
+The **Traffic Source** dimension is always populated. The other three platform
+dimensions answer narrower questions and stay empty until you set them up:
+
+| Dimension | Answers | Populated by |
+| --- | --- | --- |
+| **Ad Platform** | Which platform's click id showed up on the URL | Automatic, no setup |
+| **Ad Network** | Which Google surface delivered the click | The Google Ads final URL suffix (below) |
+| **Ad Channel** | The channel you declared on the campaign | The optional channel parameter (below) |
+
+### Revenue columns
+
+| Column | Formula | Notes |
+| --- | --- | --- |
+| **Revenue** | Sum of verified conversion value for the source's sessions | Exact |
+| **EPC** | Revenue ÷ sessions | Revenue per visit |
+| **RPV** | Revenue ÷ plays | Revenue per play |
+| **AOV** | Revenue ÷ conversions | Average order value |
+| **ROAS** | Revenue ÷ affiliate payout | `null` when no payout was captured for that source, rendered as a dash |
+
+<Warning>
+  ROAS reads as a dash, not `0×`, when no payout value has been captured for a source.
+  A zero would claim the source lost money. A dash means TrackPlay does not know what it
+  cost.
+</Warning>
+
+Every table is ranked by revenue first, then conversions, then sessions, and every column
+is sortable. Rows carrying no classification stay in the table labeled Unknown rather
+than being dropped, so the sessions column still adds up to the video's real traffic.
+
+## Traffic Quality
+
+The **Traffic Quality** card, on the video's General tab, splits sessions into four
+categories and breaks them down by country.
+
+| Category | Meaning |
+| --- | --- |
+| **Human** | Not positively flagged as anything else. Default bucket. |
+| **Bot** | Automation or crawler traffic. |
+| **Datacenter** | Hosting or VPS origin, not a residential or mobile connection. |
+| **VPN** | A visitor behind a VPN, when detected. |
+
+<Warning>
+  Best-effort classification computed at ingest from the visitor IP. Bot (automation or
+  crawler) and datacenter (hosting or VPS) are reliable. VPN detection needs the
+  IP-reputation add-on and is currently rarely available, so most VPN traffic appears as
+  datacenter or human. Anything not positively flagged counts as human.
+</Warning>
+
+This is a fail-open design: an unclassified session defaults to human rather than to bot,
+so Traffic Quality never inflates a fraud number it cannot back up.
+
+## Custom Data breakdown
+
+Also on the video's General tab. TrackPlay captures every URL query parameter your
+landing page carries into `custom_data`, whether or not it maps to a first-class column.
+The Custom Data breakdown lets you pick any captured key (`utm_source`, `affid`, a plan
+name, anything) and see one row per value, with plays, unique plays, play rate,
+conversions, and revenue. The top 50 values are shown individually, with an "Other" row
+summing the rest. Click a row to apply it as a filter across the rest of the tab.
+
+## Telling YouTube Ads apart from Search
+
+A `gclid` proves a click came from Google Ads. It cannot tell you whether that click was
+served on YouTube, on Search, or on the Display network. Without more information,
+YouTube Ads spend and Search spend are the same number in every report.
+
+Google has the answer. It does not send it unless you ask for it.
+
+<Steps>
+  <Step title="Open Ad Tracking">
+    Go to **Integrations → Ad Tracking**. The setup is one screen, and it applies to
+    every video in the workspace at once.
+  </Step>
+  <Step title="Copy the final URL suffix">
+    Copy this string exactly. Do not translate the `{'{'}...{'}'}` tokens: they are
+    Google's own ValueTrack macros, and Google expands them at click time.
+
+    ```text
+    utm_source=google&utm_medium=paid&utm_campaign={campaignid}&utm_content={creative}&ef_network={network}&ef_placement={placement}&ef_source_id={sourceid}&ef_device={device}
+    ```
+  </Step>
+  <Step title="Paste it into Google Ads">
+    Settings → Account settings → Tracking → Final URL suffix. You can also set it per
+    campaign instead of account-wide.
+  </Step>
+  <Step title="Check the status badge">
+    The Ad Tracking screen shows whether the suffix is expanding. It reads your last 30
+    days of Google Ads traffic and reports one of three states, refreshed every 5
+    minutes: **Active** (a percentage of Google sessions carrying the network parameter),
+    **Not detected** (Google traffic exists but none of it carries the parameter), or
+    **No Google Ads traffic**. A workspace running only Meta correctly reads "no
+    traffic," never a broken-looking 0%.
+  </Step>
+  <Step title="Optional: declare the channel directly">
+    Append `&ef_channel={_ef_channel}` to the suffix, then add a custom parameter named
+    `_ef_channel` on each campaign, with a value like `youtube`, `google_search`,
+    `google_display`, `performance_max`, or `demand_gen`. Only add this if you actually
+    define the `_ef_channel` custom parameter on the campaign. Without it, Google leaves
+    the macro unexpanded and you get no channel data at all.
+  </Step>
+</Steps>
+
+<Warning>
+  **Two real limits, and no workaround exists for either.** Performance Max only ever
+  reports that a click was Performance Max. It cannot say whether the surface was
+  YouTube, Search, Display, Discover, Gmail, or Maps, because Google does not expose that
+  information at the network-parameter level. Demand Gen does not support the network
+  parameter at all, in any form. For both, the declared-channel parameter above is the
+  only signal that answers the question, and it is only as accurate as what you typed
+  into the campaign.
+</Warning>
+
+## Refresh and caching
+
+A date range that ends in the past is immutable, so TrackPlay caches it hard: 24 hours.
+A date range that touches today is still accumulating events and refreshes every 10
+seconds. The Ad Tracking coverage badge is cached separately, for 5 minutes, since it
+answers a setup question rather than a live report.

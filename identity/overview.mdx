@@ -218,8 +218,23 @@ identity, separate from crediting the sale to a particular video.
     key.)
   </Accordion>
   <Accordion title="The ids are first-party">
-    `trackplay_session_id` and `trackplay_device_id` are cookies on your own domain, not a
-    third-party tracker. They are readable only by your pages.
+    `trackplay_session_id` and `trackplay_device_id` are cookies on your own domain. They
+    are readable only by your pages.
+  </Accordion>
+  <Accordion title="The cross-domain device cookie, and when it applies">
+    There is one more cookie, and it is not first-party. If your workspace is served
+    through a **dedicated tracking domain**, the tracking host also sets a device cookie
+    (`_dg`) on that domain: `Secure`, `HttpOnly`, `SameSite=None`, with a one-year
+    lifetime. `SameSite=None` is what makes it work across sites, and it is the reason
+    the same device can be recognised on more than one of your domains.
+
+    It is `HttpOnly`, so no page script can read it. The server sees it on the tracking
+    request and nowhere else.
+
+    **This is off unless a dedicated tracking domain is configured for the environment.**
+    With no tracking host set, the mechanism is dormant and nothing is written. If you
+    are not on a dedicated tracking domain, the two first-party cookies above are the
+    whole story.
   </Accordion>
   <Accordion title="Deletion resolves by the same hash">
     A GDPR deletion request resolves the person through the same `email_hash` edges, so the

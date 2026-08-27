@@ -1,0 +1,118 @@
+---
+title: "Workspaces"
+description: "Your videos, analytics, domains and integrations sit inside a workspace, and a workspace is a hard boundary, not a folder."
+icon: "building"
+---
+
+A workspace holds one product's videos, analytics, domain allowlist, integrations, and
+reporting settings. It is the isolation boundary in TrackPlay: nothing in one workspace is
+visible from another unless a mechanism (like the cross-workspace panel on
+[Customer 360](/audience/customer-360)) explicitly crosses it.
+
+## What lives inside a workspace
+
+- **Videos.** Your library, folders, and player settings.
+- **Analytics.** Every report is scoped to this workspace's events. A workspace with no
+  traffic shows no numbers, not another workspace's numbers.
+- **Domain allowlist.** The hostnames your player is permitted to embed on. A request from
+  a domain not on the list is refused.
+- **Integrations.** Cart, ad, and CRM connections, including the Google Ads tracking
+  setup, are configured per workspace.
+- **Reporting timezone.** Set once under Settings, General. Every report and every chart
+  in this workspace reads its date boundaries in this zone.
+
+<Tip>
+  A shared report link carries the reporting timezone as a URL parameter (`?tz=`), so a
+  teammate who opens your link sees the same day boundaries you saw when you copied it,
+  even if their own browser or saved preference points somewhere else. If the parameter is
+  missing or invalid, the link falls back to the recipient's own saved timezone rather
+  than breaking.
+</Tip>
+
+## Roles
+
+TrackPlay has two separate role systems. They answer different questions and are not the
+same list, so do not conflate them.
+
+<Tabs>
+  <Tab title="Workspace roles">
+    Two roles, scoped to one workspace: **owner** and **admin**.
+
+    A workspace has exactly one owner. The owner is the billing-responsible party: usage
+    in this workspace accrues to their plan. This is enforced in the data layer, not only
+    the UI, so a second owner row cannot be created and the last owner cannot be demoted
+    or removed without transferring ownership first.
+
+    Everyone else with access is an admin. Admins can manage the workspace day to day.
+    There is currently no invite-time role picker: every invite you send lands the
+    invitee as an admin. If you want to hand off ownership, invite them first, then
+    transfer.
+  </Tab>
+  <Tab title="Organization roles">
+    Three roles, scoped above any single workspace: **owner**, **manager**, **member**.
+
+    | Action | Owner | Manager | Member |
+    | --- | --- | --- | --- |
+    | Invite a manager | Yes | No | No |
+    | Invite a member | Yes | Yes | No |
+    | Remove a manager | Yes | No | No |
+    | Remove a member | Yes | Yes | No |
+    | Change roles, rename org, transfer, manage billing | Yes | No | No |
+    | View the team | Yes | Yes | Yes |
+
+    A manager can grow the team but never touch billing or another manager's access. A
+    member has read-only visibility into who is on the team.
+  </Tab>
+</Tabs>
+
+## Ownership transfer
+
+Both role systems support a transfer, and both are atomic and restricted to the current
+owner. A workspace owner hands billing responsibility for that one workspace to another
+member. An organization owner hands the whole account to someone else. Neither transfer
+can be started by anyone but the person currently holding the role.
+
+## API keys
+
+Two systems exist. Use the current one.
+
+<Warning>
+  The legacy single workspace API key is deprecated and is rejected outright by newer
+  ingest endpoints. If you are still using it, migrate to a scoped token; do not build
+  anything new on it.
+</Warning>
+
+Scoped tokens are the current system. Mint as many as you need, each with its own name
+and its own scopes:
+
+| Scope | Grants |
+| --- | --- |
+| `videos:read` / `videos:write` | Read or manage the video library |
+| `analytics:read` | Read analytics data |
+| `conversions:read` / `conversions:write` | Read or post conversions |
+| `integrations:read` | Read integration configuration |
+| `webhooks:write` | Manage webhook configuration |
+| `workspace:read` | Read workspace metadata |
+| `events:write` | Push custom events. Write-only, on purpose: a token with only this scope can send data and cannot read anything back, which makes it the one safe to hand to a customer's backend for server-to-server ingest. |
+
+A token can carry an optional expiry between **1 and 3,650 days**, or none at all. The
+plaintext token is shown to you exactly once, at creation. TrackPlay stores only its
+SHA-256 hash, so if you lose it, the fix is to mint a new one, not to recover the old one.
+
+## Audit log
+
+Every workspace keeps an activity feed: who did what, and when. It is cursor-paginated
+(50 entries per page by default, up to 200), and you can filter by action, by the user who
+performed it, or by a date range.
+
+<Note>
+  Sensitive fields (passwords, API keys, secrets, tokens) are redacted before an entry is
+  ever written to the log. A support agent or a teammate reading the audit trail sees that
+  a key was rotated, never the key itself.
+</Note>
+
+## Usage, per workspace
+
+If your account owns more than one workspace, each one's play usage is broken out
+separately on the Billing screen, so you can see which product is driving your plan's
+consumption instead of one combined total.

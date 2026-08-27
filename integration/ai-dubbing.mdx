@@ -1,0 +1,214 @@
+---
+title: "AI Dubbing"
+description: "Dub a video into another language with word-timed captions, and let each viewer's device or country pick the version they see."
+icon: "language"
+sidebarTitle: "AI Dubbing"
+---
+
+One video, watched in the viewer's own language. TrackPlay generates a dubbed audio
+track and translated, word-timed captions for each language you pick, and the player
+serves the right one automatically.
+
+<Note>
+  This is a different feature from [AI Voice Segments](/integration/elevenlabs-ai-segments),
+  which plays short personalized text-to-speech lines during a video using **your own**
+  ElevenLabs key. Dubbing replaces the whole audio track in another language and runs on
+  **TrackPlay's** ElevenLabs key. See [how they differ](#dubbing-vs-ai-voice-segments)
+  below.
+</Note>
+
+<Warning>
+  Dubbing is billed separately from your plan. Every language you dub is a one-off charge,
+  raised as its own invoice when you start the run, on top of whatever plan you are on.
+  It is never deducted from your plan's play allowance.
+</Warning>
+
+## Pricing
+
+<ParamField body="per_minute_per_language" type="number">
+  **$0.60** per minute of source video, per target language, rounded up to the nearest
+  whole minute with a 1-minute floor. Config: `DUBBING_PRICE_PER_MIN_CENTS` (cents,
+  default `60`).
+</ParamField>
+<ParamField body="original_captions_standalone" type="number">
+  **$0.02** per minute, for word-timed captions in the video's own original language,
+  with no dub. Config: `DUBBING_SCRIBE_PRICE_PER_MIN_CENTS` (cents, default `2`).
+</ParamField>
+
+Original-language captions ride free with any paid dub on the same video. Dub the video
+into one language and the original-language captions are included at no extra charge;
+request original-language captions alone, with no dub, and the standalone price applies.
+Config: `DUBBING_BUNDLE_ORIGINAL_FREE` (default `true`).
+
+A ten-minute video dubbed into three languages costs 3 × 10 × $0.60 = **$18.00**, plus the
+original-language captions for free because a paid dub is already on the video.
+
+## Dub a video
+
+<Steps>
+  <Step title="Open the video's Customize tab">
+    Go to the video, then **Customize → Dubbing**.
+  </Step>
+  <Step title="Pick your target languages">
+    TrackPlay shows the price and a time estimate for each language before you commit to
+    anything.
+  </Step>
+  <Step title="Choose how it goes live">
+    **Go live automatically** publishes each dub the moment it finishes. **Wait for my
+    review** holds it at **Waiting for your review** until you approve or discard it.
+  </Step>
+  <Step title="Pay and start">
+    The workspace owner pays inline and the run starts once the charge succeeds. A
+    teammate who is not the owner sees **Waiting for {owner} to approve** instead: the
+    owner gets an emailed link to review the price and pay.
+  </Step>
+</Steps>
+
+<Note>
+  The owner's approval link expires after 7 days. Once the owner has started paying, the
+  link is exempt from that expiry but the whole request is still capped at 30 days from
+  when it was made, so nothing can linger open indefinitely.
+</Note>
+
+A dub needs the video's transcript first. If none exists yet, TrackPlay extracts one
+automatically the first time you open the Dubbing tab or turn on captions; the tab shows a
+brief **reading your video** state while that happens, and no target-language dub can
+start until it finishes.
+
+### Preflight
+
+Before you can pay, TrackPlay checks two things: that its own ElevenLabs key is healthy,
+and that the workspace owner has a usable payment method on file. Either failing blocks
+the run before any money moves:
+
+<AccordionGroup>
+  <Accordion title="Dubbing is briefly unavailable">
+    TrackPlay's platform ElevenLabs key failed a health check, or is on a plan tier that
+    cannot run automatic dubbing. This is checked against TrackPlay's own account, never
+    yours: you do not need your own ElevenLabs subscription for dubbing. Try again in a
+    few minutes.
+  </Accordion>
+  <Accordion title="Add a payment method">
+    The workspace has no usable card on file. Add one in workspace billing, then start the
+    dub again.
+  </Accordion>
+</AccordionGroup>
+
+### Review mode
+
+Pick **Wait for my review** on a video where you want to sign off on the translation
+before a viewer ever hears it. A dub that finishes generation lands at **Waiting for your
+review** instead of going live:
+
+- **Approve** publishes it. The player recompiles and the language becomes selectable for
+  viewers.
+- **Discard** rejects it. The row stays for your records, marked failed, and the credits
+  already spent on that run are not refunded.
+
+### If a run fails
+
+A dub that fails outright is refunded automatically: TrackPlay reverses the Stripe charge
+for that language's share of the invoice and emails the owner. When you dubbed several
+languages on the same invoice and only one fails, only that language's share is refunded;
+the languages that succeeded are not touched.
+
+## The brand dictionary
+
+Product names, brand terms and anything else worth getting right in every language live
+in a workspace-level brand dictionary, shared by every video and every dub.
+
+- **Corrections**: a wrong transcription and the right spelling, e.g. `Herpafen` corrected
+  to `Herpafend`. Adding or editing one runs the fix across every existing dub already
+  using the wrong spelling, not only future ones.
+- **Protected terms**: a term to keep exactly as written, biased into TrackPlay's speech
+  recognition so it stops drifting into a near-miss.
+
+TrackPlay auto-seeds hints from your workspace name and video titles the first time the
+dictionary loads, so a new workspace is not starting from nothing. These hints stay
+invisible: they bias transcription quietly, and you manage the dictionary through explicit
+corrections and protected terms, not by triaging every guess.
+
+<Note>
+  The dictionary is capped at 100 terms fed into speech recognition per run: your
+  corrections and protected terms take priority, and auto-seeded hints fill whatever room
+  is left.
+</Note>
+
+## How the player picks a language
+
+Set the matching rule on the Dubbing tab: **Device language**, **Country**, **Device and
+country agree**, **Device first, then country**, or **Off**.
+
+| Setting | What the viewer gets |
+| --- | --- |
+| Device language | Whichever dub matches the browser's own language setting. |
+| Country | Whichever dub matches the country TrackPlay resolved for the viewer. |
+| Device and country agree | Only switches when both device language and country point to the same dub. Otherwise, the original. |
+| Device first, then country | Tries device language first; falls back to country if there is no match. |
+| Off | Every viewer starts on the original language. |
+
+A viewer who manually switches languages has that choice remembered for the rest of their
+session; it overrides the automatic match on every later visit within the session, even if
+you change the matching rule afterward.
+
+Viewers switch languages from a language button in the player controls, or from the
+**Language** row in the settings menu, both listing every finished, published dub by its
+native name (`Español`, not `Spanish`). A dub still generating, or held in **Wait for my
+review**, is invisible here: only a published dub appears as an option to viewers.
+
+If a viewer's matched dub is not on the video, they see the original. If a matched dub's
+audio fails to load mid-playback, the player retries twice, then falls back to the
+original audio and original captions for the rest of that session rather than leaving the
+viewer stuck.
+
+## Word-timed captions
+
+Every dub carries captions timed to the individual word, not only the line. Whichever word
+is being spoken is highlighted as it is spoken, matching the karaoke-style caption look
+your viewers already expect from short-form video.
+
+### A video does not need a dub to get these captions
+
+Turn on captions for a video's original language and TrackPlay runs the same word-timed
+transcription with no translation and no new audio: the original audio plays untouched,
+with karaoke captions over it. Because there is no second language, the player shows no
+language switcher for it; a viewer sees accurate, word-timed captions on the video
+they were already going to watch.
+
+## Dubbing vs. AI Voice Segments
+
+| | AI Dubbing | AI Voice Segments |
+| --- | --- | --- |
+| What it does | Replaces the whole audio track in another language | Plays short personalized voice lines at specific timestamps |
+| ElevenLabs key | TrackPlay's own | Your own workspace key |
+| Billing | Per minute, per language, one-off charge on top of your plan | Uses your own ElevenLabs quota |
+| Where it is configured | Customize → Dubbing | Customize → AI Segments |
+
+See [ElevenLabs & AI Segments](/integration/elevenlabs-ai-segments) for the personalized
+voice-overlay feature.
+
+## When it does not work
+
+<AccordionGroup>
+  <Accordion title="'transcript_required' when starting a dub">
+    The video has no transcript yet for a target-language dub to translate from. Open the
+    Dubbing or Captions tab to kick off extraction, then try again once it reports ready.
+    The original-language run is exempt from this: it is what produces the transcript.
+  </Accordion>
+  <Accordion title="Dub finished but nobody sees it">
+    Check its status. **Waiting for your review** means you chose **Wait for my review**
+    and it needs an explicit **Approve** before it goes live and the player recompiles to
+    include it.
+  </Accordion>
+  <Accordion title="A teammate cannot start a dub">
+    Only the workspace owner pays directly. Anyone else's request goes to **Waiting for
+    {owner} to approve** and emails the owner a link. If that link is more than 7 days old
+    and the owner never opened it, ask them to start the dub from the Dubbing tab instead.
+  </Accordion>
+  <Accordion title="Viewer never gets the dubbed version">
+    Confirm the matching rule is not **Off**, and that the dub for their language is
+    published (not still generating or waiting on review). Also check whether that viewer
+    switched languages manually earlier in the session: a manual choice overrides the
+    automatic match for the rest of that session.
+  </Accordion>
+</AccordionGroup>

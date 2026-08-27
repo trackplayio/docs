@@ -1,0 +1,182 @@
+---
+title: "Playback controls"
+description: "Keyboard shortcuts, lock-screen controls, and a memory for how each viewer likes to watch. All on by default, none of them documented until now."
+icon: "gamepad"
+sidebarTitle: "Playback controls"
+---
+
+None of this needs a setup screen. It ships in the player and works the moment a viewer
+presses a key, locks their phone, or right-clicks the video.
+
+## Hotkeys
+
+The player listens for keyboard shortcuts the moment it has focus. A small pill appears
+over the video for 800 milliseconds on every press, so a viewer who stumbles onto a
+shortcut learns what it did.
+
+| Key | Action | Needs a seek control |
+| --- | --- | --- |
+| `Space` or `K` | Play / pause | No |
+| `M` | Mute / unmute | No |
+| `F` | Fullscreen | No |
+| `C` | Toggle captions (only when the video has caption tracks) | No |
+| `↑` / `↓` | Volume up / down, 10% per press | No |
+| `←` / `→` | Seek 5 seconds back / forward | Yes |
+| `J` / `L` | Seek 10 seconds back / forward | Yes |
+| `0` to `9` | Jump to 0%, 10%, … 90% of the video | Yes |
+| `Home` / `End` | Jump to the start / near the end | Yes |
+
+<Note>
+  The seek shortcuts (arrows, `J`/`L`, number keys, `Home`, `End`) only work when at
+  least one seek-related control is turned on, the progress bar, or the rewind/forward
+  buttons, on **Video → Customize → Style**. With all three off, the video plays start
+  to end and none of these keys move the playhead. Play/pause, mute, fullscreen,
+  captions and volume are unaffected, they work regardless.
+</Note>
+
+Hotkeys are never intercepted while a viewer is typing into a form field, and a held
+`Ctrl`, `Cmd` or `Alt` is always left alone so browser and OS shortcuts still work.
+
+<Note>
+  There is no dashboard toggle for this. Hotkeys are on for every video, on every plan.
+</Note>
+
+## Picture-in-picture, AirPlay, and Chromecast
+
+<Tabs>
+  <Tab title="Picture-in-picture">
+    Pops the video into a floating window that stays on top of other tabs and apps, on
+    every browser that supports it.
+
+    Turn on **PiP button** under **Video → Customize → Style**. Once it is on, a viewer
+    can start PiP from the control bar button or from the settings (gear) menu. The
+    button only renders when the browser reports PiP support, so nothing broken shows up
+    on a browser that cannot do it.
+  </Tab>
+  <Tab title="AirPlay">
+    Casts to an Apple TV or an AirPlay speaker straight from the player, using the
+    browser's own Remote Playback API.
+
+    <Warning>
+      There is no checkbox for this on the Style tab today. Turn it on with
+      `style_options.classic_airplay_button` through the [Video Settings
+      API](/api-reference/video-settings). The button then appears automatically,
+      hidden until the viewer's browser reports an AirPlay target is available.
+    </Warning>
+  </Tab>
+  <Tab title="Chromecast">
+    Casts to a Chromecast device on the viewer's network.
+
+    <Warning>
+      Also missing from the dashboard. Set `style_options.classic_cast_button` to `true`
+      and `style_options.cast_receiver_app_id` to your Google Cast receiver app ID
+      through the [Video Settings API](/api-reference/video-settings). The Cast SDK
+      loads on demand, only for viewers who have a device to cast to.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Lock-screen media controls
+
+When a viewer locks their phone, or looks at their laptop's media widget, the player is
+wired into the browser's Media Session API. Play, pause, seek back, seek forward and
+seek-to-position all work from the lock screen or the media widget directly, with the
+phone still locked and the tab still in the background.
+
+The title shown is your page's `document.title`. There is no separate field to set a
+different title for the lock screen. Artwork is the video's poster image, when the
+browser has one to show.
+
+<Note>
+  This is on for every video. There is no option to turn it off.
+</Note>
+
+## Deep-link seek
+
+Add `?tp_t=90` to a video's URL and playback starts at 90 seconds instead of from zero.
+The value is a plain number of seconds, not a clock string.
+
+```
+https://example.com/watch?tp_t=245
+```
+
+<Note>
+  Deep-link seek needs the same seek control gate as the hotkeys above (progress bar or
+  rewind/forward buttons on), and it reads `playback_options.allow_deep_link_seek`,
+  which defaults to on. Set it to `false` on the Playback tab to stop `tp_t` from
+  working on a specific video, for instance one where you never want a viewer skipping
+  ahead of the pitch.
+</Note>
+
+## Smart pause and loop
+
+**Video → Customize → Playback.**
+
+<AccordionGroup>
+  <Accordion title="Smart pause">
+    Pauses the video the instant the viewer switches tabs or apps, and resumes it when
+    they come back, so nobody returns to a video that kept talking to an empty room.
+
+    Key: `playback_options.smart_pause`, boolean.
+
+    It only pauses a video the viewer already started, and only while they are not in
+    fullscreen. It will not un-pause a video the viewer paused on purpose before
+    switching tabs, and it never force-starts a video the viewer had not pressed play
+    on, a click-to-play thumbnail that was still sitting there, for instance.
+  </Accordion>
+  <Accordion title="Loop, with a start point">
+    Turn on **Loop** and the video replays automatically when it ends, from a point you
+    choose rather than from zero. Useful for a background reel or a demo loop where the
+    first few seconds are a slow fade-in you do not want to repeat.
+
+    Keys: `playback_options.loop` (boolean) and `playback_options.loop_start_time`,
+    required once loop is on. Give it either a plain number of seconds or a clock string
+    (`MM:SS` or `HH:MM:SS`), both are accepted.
+  </Accordion>
+</AccordionGroup>
+
+## Viewer preference persistence
+
+The player remembers how a viewer likes to watch: volume, mute state, playback speed,
+and whether captions are on and in which language. It is stored in the browser's
+`localStorage`, keyed to your workspace, not to the individual video.
+
+<Note>
+  This persists **across every video in your workspace**, not only the one the viewer is
+  currently on. A viewer who turns captions on, or mutes, or bumps the speed to 1.5x on
+  one video gets the same treatment the next time they land on any other video from the
+  same workspace, in the same browser.
+</Note>
+
+It is **on by default**. Two things turn it off:
+
+- Setting `style_options.persist_viewer_prefs` to `false` on a video.
+- A video configured for muted autoplay without auto-unmute
+  (`autoplay_options.autoplay` on, `autoplay_options.auto_unmute` off). TrackPlay assumes
+  that forced mute is a deliberate choice and will not let a stored preference from a
+  different video override it.
+
+## The right-click context menu
+
+Right-clicking the player opens a small menu instead of the browser's default one.
+
+<Steps>
+  <Step title="Copy URL at this time">
+    Copies the current page URL with `?tp_t=<seconds>` appended, the same deep-link
+    parameter described above. Only appears when **Share button** is on.
+    Key: `style_options.share_button`.
+  </Step>
+  <Step title="A TrackPlay link">
+    Always present, on every plan, with no setting to remove it. The wording rotates
+    between a few variants ("Powered by TrackPlay.io", "Built with TrackPlay", "Get this
+    player") fetched from TrackPlay's own service and cached in the browser for a few
+    hours, so the copy can change or be tested without recompiling every video. Each
+    video shows one variant consistently rather than a different one on every right-click.
+  </Step>
+</Steps>
+
+<Warning>
+  There is no option, on any plan, to remove the TrackPlay link from this menu. If your
+  workspace needs a fully unbranded right-click menu, that is a conversation with your
+  account team, not a setting on this page.
+</Warning>

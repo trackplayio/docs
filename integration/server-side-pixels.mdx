@@ -1,0 +1,229 @@
+---
+title: "Server-Side Pixels"
+description: "Send conversions straight from TrackPlay's servers to Meta, TikTok and GA4, so an ad blocker or a lost cookie never costs you a reported sale."
+icon: "satellite-dish"
+sidebarTitle: "Server-Side Pixels"
+---
+
+A browser pixel only fires if the viewer's browser lets it. Ad blockers, Safari's tracking
+prevention, and a viewer who declined cookies all take a bite out of what a client-side
+Meta Pixel or TikTok Pixel ever reports. TrackPlay's server-side senders skip the browser
+entirely: when a lead, a click or a sale happens, TrackPlay's own servers call Meta's
+Conversions API, TikTok's Events API and GA4's Measurement Protocol directly.
+
+Three integrations, configured the same way: **Meta CAPI**, **TikTok Events**, **GA4**.
+
+<Warning>
+  **Known issue: the credential does not save.** On all three integrations the pixel or
+  measurement ID saves correctly, but the secret that authenticates the send (the Meta and
+  TikTok `access_token`, the GA4 `api_secret`) is discarded before it is stored. The
+  integration then reports **Active** while every send fails authentication.
+
+  Setting these up will not work until that is fixed. If you have already configured one
+  and seen no events arrive at Meta, TikTok or GA4, this is why, and it is not something
+  you can work around from your side. Contact [support@trackplay.io](mailto:support@trackplay.io)
+  before spending time debugging your token.
+
+  Everything else on this page (the event mapping, the revenue-only rule, and the dedup
+  behaviour) is accurate and unaffected.
+</Warning>
+
+## Connect one
+
+<Tabs>
+  <Tab title="Meta CAPI">
+    <Steps>
+      <Step title="Open Integrations">
+        Click **Integrations** in the sidebar, find **Meta CAPI**, and click **Connect**.
+      </Step>
+      <Step title="Paste your pixel ID">
+        From Events Manager in Meta Business Suite.
+      </Step>
+      <Step title="Paste your access token">
+        A CAPI system-user token, generated in Events Manager under **Settings →
+        Conversions API**.
+      </Step>
+      <Step title="Optional: test event code">
+        Paste a test event code from Events Manager to route events to **Test Events**
+        instead of your real dataset while you verify the connection.
+      </Step>
+      <Step title="Save">
+        The integration goes **Active** immediately. There is no postback to wait for.
+      </Step>
+    </Steps>
+
+    <ParamField body="pixel_id" type="string" required>
+      Your Meta pixel ID.
+    </ParamField>
+    <ParamField body="access_token" type="string" required>
+      A Conversions API system-user access token. Treat it like a password.
+    </ParamField>
+    <ParamField body="test_event_code" type="string">
+      Routes every event to Events Manager's Test Events tab instead of your live dataset.
+    </ParamField>
+  </Tab>
+  <Tab title="TikTok Events">
+    <Steps>
+      <Step title="Open Integrations">
+        Click **Integrations** in the sidebar, find **TikTok Events**, and click
+        **Connect**.
+      </Step>
+      <Step title="Paste your pixel code">
+        From TikTok Events Manager.
+      </Step>
+      <Step title="Paste your access token">
+        An Events API access token, generated in TikTok Events Manager.
+      </Step>
+      <Step title="Save">
+        The integration goes **Active** immediately.
+      </Step>
+    </Steps>
+
+    <ParamField body="pixel_code" type="string" required>
+      Your TikTok pixel code.
+    </ParamField>
+    <ParamField body="access_token" type="string" required>
+      A TikTok Events API access token.
+    </ParamField>
+  </Tab>
+  <Tab title="GA4">
+    <Steps>
+      <Step title="Open Integrations">
+        Click **Integrations** in the sidebar, find **GA4**, and click **Connect**.
+      </Step>
+      <Step title="Paste your measurement ID">
+        The `G-XXXXXXXXXX` ID for the data stream you want events sent to.
+      </Step>
+      <Step title="Paste your API secret">
+        Generate one in GA4 under **Admin → Data Streams → your stream → Measurement
+        Protocol API secrets**.
+      </Step>
+      <Step title="Save">
+        The integration goes **Active** immediately.
+      </Step>
+    </Steps>
+
+    <ParamField body="measurement_id" type="string" required>
+      Your GA4 data stream's measurement ID.
+    </ParamField>
+    <ParamField body="api_secret" type="string" required>
+      A Measurement Protocol API secret for that stream.
+    </ParamField>
+
+    <Note>
+      GA4 also needs a real `client_id`, read from the viewer's own `_ga` cookie. When a
+      viewer has no `_ga` cookie (a first-party-blocked browser, or GA never loaded on the
+      page), TrackPlay does not invent one. The event is not sent rather than landing as a
+      phantom one-hit user with no device and no channel.
+    </Note>
+  </Tab>
+</Tabs>
+
+## What fires, and as what
+
+Every server-side sender shares one canonical event set. Not every canonical event reaches
+every platform: engagement events go to GA4 for funnel reporting, but only conversions and
+leads are worth a dedicated pixel event on Meta and TikTok.
+
+| TrackPlay event | Meta CAPI | TikTok Events | GA4 |
+| --- | --- | --- | --- |
+| `video.viewed` | Not sent | Not sent | `video_start` |
+| `play.milestone` | `ViewContent` | `ViewContent` | `video_progress` |
+| `cta.clicked` | `ViewContent` | `ClickButton` | `select_content` |
+| `lead.captured` | `Lead` | `SubmitForm` | `generate_lead` |
+| `lead.hot` | `HotLead` (custom) | `HotLead` (custom) | `generate_lead` |
+| `lead.known_customer` | `KnownCustomerLead` (custom) | `KnownCustomerLead` (custom) | `generate_lead` |
+| `conversion.created` | `Purchase` | `CompletePayment` | `purchase` |
+
+`lead.hot` and `lead.known_customer` are watch-behavior predictions, not standard
+purchase intent, so they go out as **custom** events on Meta and TikTok rather than being
+mapped onto `Lead` or `Purchase`. Sending them as a standard event would pollute the
+optimization signal your real conversions train on. As a custom event they are still
+usable: build a Website Custom Audience (Meta) or a custom event audience (TikTok) on the
+event name and retarget or build a lookalike from it.
+
+## Conversions fire on real revenue only
+
+A `conversion.created` send only happens for a genuine `purchase` or `rebill`. A refund, a
+chargeback, and anything flagged as a test sale never reach Meta, TikTok or GA4, whichever
+cart or API sent it.
+
+<Warning>
+  A refund is never un-fired. TrackPlay does not send a compensating "Purchase reversed"
+  event to any of the three platforms, because none of them has one. Reconcile refunds on
+  the ad platform's own side if you need your reported revenue to net out.
+</Warning>
+
+## Matching a viewer to a person
+
+Meta and TikTok match a conversion to a person using whatever identity TrackPlay has for
+that session. Email and phone are SHA-256 hashed before they leave TrackPlay's servers.
+`fbc`, `fbp` and `ttclid` (the ad-click identifiers) are sent raw, because Meta and TikTok
+match on the raw values directly.
+
+- **Email, phone, first name, last name**: hashed. A cart postback's buyer name is split
+  on the first space; everything after it becomes the last name. Wrong for some names, but
+  it is what Meta's own examples do, and a wrong-but-present last name still matches more
+  often than an absent one.
+- **`fbc` / `fbp` / `ttclid`**: read from the click identifiers TrackPlay's player captured
+  when the viewer landed, resolved from the converting session. Never fabricated: a made-up
+  click identifier matches nobody and actively damages match quality.
+- **IP and user agent**: sent, but never counted as a match key on their own. Meta
+  documents them as insufficient alone, so an event with no email, phone, name, `fbc`,
+  `fbp` or `ttclid` is not sent to Meta at all rather than shipped as a guaranteed reject.
+
+## Deduplication
+
+If you also fire your own Meta or TikTok pixel from the thank-you page, both platforms
+dedupe a pair of events that share the same event name and the same `event_id`. TrackPlay
+derives that ID deterministically:
+
+```
+event_id = "tp_" + sha256(workspace_id + "|" + order_id)[0:32]
+```
+
+<Warning>
+  This deterministic ID is only applied to conversions you send through the **[Conversions
+  API](/api-reference/conversions)** (`POST /api/v1/conversions`). Set your own
+  `event_id` field on that call, or omit it and TrackPlay derives the value above from
+  your `conversion_id`.
+
+  A conversion that arrives through a **cart integration** (ClickBank, Kiwify,
+  Digistore24 and the rest) does not currently carry this derived ID. Each server-side
+  Purchase from a cart postback ships with a fresh, unpredictable ID, so a thank-you-page
+  pixel cannot be set up to match it. If you run a cart integration and your own browser
+  pixel also fires `Purchase` on the thank-you page, expect Meta and TikTok to report the
+  sale twice until one of the two is turned off.
+</Warning>
+
+If you are not firing your own pixel on the thank-you page, none of this matters: TrackPlay's
+server-side send is the only Purchase event Meta or TikTok ever sees, and there is nothing
+to dedupe.
+
+## When it does not work
+
+<AccordionGroup>
+  <Accordion title="Integration shows Active but nothing arrives in Events Manager">
+    Confirm the pixel ID or measurement ID is for the same account you are checking. Then
+    confirm the access token or API secret was not rotated on the platform's side after
+    you saved it here. TrackPlay does not surface a per-event delivery log for these three
+    integrations today, so a revoked token or a malformed credential fails on Meta's or
+    TikTok's side with nothing visible on TrackPlay's. Contact support if pixel ID and
+    credentials both check out and events still do not appear.
+  </Accordion>
+  <Accordion title="Meta rejects the event">
+    "No Meta match key on this event" means the viewer carried no email, phone, name,
+    `fbc`, `fbp` or `ttclid`. This is common on `play.milestone` and `cta.clicked` events
+    from a viewer who has not submitted a lead form and has no ad-click identifier on their
+    session; it is not sent rather than shipped as a guaranteed 400.
+  </Accordion>
+  <Accordion title="GA4 shows nothing in Realtime">
+    Check the viewer has a `_ga` cookie. GA4's Measurement Protocol requires a real
+    `client_id` to count a session; TrackPlay refuses to send a fabricated one, so a
+    viewer with GA blocked or never loaded produces no event rather than a phantom user.
+  </Accordion>
+  <Accordion title="A sale is double-counted in Ads Manager">
+    See Deduplication above. This happens when a cart-postback conversion's server-side
+    Purchase and your own browser pixel's Purchase both fire with different event IDs.
+  </Accordion>
+</AccordionGroup>

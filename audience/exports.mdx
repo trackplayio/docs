@@ -1,0 +1,88 @@
+---
+title: "Audience exports"
+description: "Two CSV formats: one that never leaves your app with a raw email or phone in it, and one built for a sales team to work from."
+icon: "file-export"
+---
+
+Your audience data is yours. TrackPlay exports it in two shapes, and the difference
+between them matters: one is safe to upload straight to an ad platform, the other
+contains contact information and needs to stay inside your team.
+
+## The two formats
+
+<Tabs>
+  <Tab title="Customer match">
+    A two-column CSV: `email`, `phone`, both **SHA-256 hashed**. Nothing else.
+
+    Every value is normalized the same way ad platforms expect: lowercase, trimmed, then
+    hashed. That is deliberate. Meta, Google, and TikTok all hash a customer list the same
+    way before matching it, so a hash TrackPlay produces from `Jane@Acme.com` matches the
+    hash the ad platform produces from the same address on its side. Upload it directly as
+    a Custom Audience or Customer Match list.
+
+    <Warning>
+      No raw email address and no raw phone number leave your app in this format. If a
+      value did not already have a hash on file, TrackPlay hashes the raw contact at
+      export time rather than including it plain, so the file that downloads is always
+      hash-only.
+    </Warning>
+
+    Rows with neither an email hash nor a phone hash, and exact duplicate hash pairs, are
+    dropped before the file downloads. There is no reason to upload noise to an ad
+    platform.
+  </Tab>
+  <Tab title="Follow-up sheet">
+    The full picture: raw contact (email, name, phone, wherever a conversion or a form
+    captured one), ad-platform click ids for manual lookups, traffic source and landing
+    page, and any custom events this person triggered.
+
+    This format carries real PII. Build the file for your sales or support team to work a
+    list, not to upload anywhere.
+
+    <Warning>
+      The follow-up sheet includes raw email addresses and phone numbers where TrackPlay
+      has them. Treat the downloaded file the way you would treat any customer contact
+      list: do not paste it into a tool that was not built to hold PII.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Two independent choices
+
+Every export is one request with two parameters, chosen independently.
+
+| Parameter | Values | Meaning |
+| --- | --- | --- |
+| `scope` | `all` or `hot` | `all` exports every identified viewer (one row per profile). `hot` exports the current Hot Leads list (one row per session). |
+| `format` | `customer_match` or `full` | Which of the two shapes above. `customer_match` is the default. |
+
+So `scope=hot&format=full` is your call list with real phone numbers and emails attached.
+`scope=all&format=customer_match` is every viewer you have ever identified, hashed and
+ready to upload as a retargeting audience.
+
+## How the export runs
+
+<Warning>
+  This is a **direct download**, not a background job. The file streams to you the moment
+  you request it. There is no queue, no email with a link, and no waiting.
+</Warning>
+
+That directness comes with hard limits, so one export request can never turn into an
+unbounded database scan:
+
+| Limit | Value |
+| --- | --- |
+| Max rows, `scope=all` | 5,000 profiles |
+| Max rows, `scope=hot` | 500 leads |
+| Rate limit | 10 requests per minute |
+
+If your audience is larger than the cap, export in the scope that fits your need (`hot`
+is almost always what you want for follow-up) rather than expecting a second file to pick
+up where the first left off. There is no pagination on this endpoint today.
+
+<Note>
+  This is different from the video-report export in the API, which does run as an
+  asynchronous job and hands back a download URL for larger jobs. Audience exports and
+  video-report exports are separate mechanisms with separate limits. Do not assume the
+  async behavior of one applies to the other.
+</Note>

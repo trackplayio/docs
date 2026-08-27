@@ -104,7 +104,7 @@ Optional. The product name.
 
 The call reads the session id the TrackPlay player already keeps for the viewer. It looks in three places, in order: the player on the page, the first-party `trackplay_session_id` cookie, and a `?tp_sid=` value on the URL for a checkout that crosses domains. The first one it finds wins, and the sale joins that watch session.
 
-If none is found, the sale is still recorded. It just cannot be tied to a session.
+If none is found, the sale is still recorded. It cannot be tied to a session.
 
 No secret is used. The snippet carries only your public workspace code and the cart key, the same values already visible in your embed. The private key that signs your server postbacks never touches the page.
 
@@ -120,4 +120,4 @@ That is also why the order id matters. Send the same order number from the page 
 
 Browser sales show up as conversions, marked unverified. You can tell them apart from server sales at any time, and your verified revenue, EPC, RPV and ROAS stay built from server sales alone.
 
-If a browser sale later arrives again as a verified postback, it simply becomes verified. Nothing on your side changes.
+If a browser sale later arrives again as a verified postback, it becomes verified. Nothing on your side changes.

@@ -19,12 +19,16 @@ Pick one. It carries the viewer's session into BuyGoods and comes back on the po
 
 | Parameter | |
 | --- | --- |
-| `subid_1` | Sub ID 1 |
-| `subid_2` | Sub ID 2 |
-| `subid_3` | Sub ID 3 |
-| `vid1` | Vendor ID 1 |
-| `vid2` | Vendor ID 2 |
-| `vid3` | Vendor ID 3 |
+| `subid` | Sub ID. The default. |
+| `subid2` | Sub ID 2 |
+| `subid3` | Sub ID 3 |
+
+<Warning>
+  Note the spelling: `subid`, not `subid_1`. These three are the only values BuyGoods
+  echoes back on the postback. Pick anything else and the sale completes, the postback
+  arrives, and the session is not in it. The sale is credited as organic while the
+  integration still reads **Active**.
+</Warning>
 
 <Warning>
   Choose a parameter nothing else is using. TrackPlay **overwrites** the parameter you

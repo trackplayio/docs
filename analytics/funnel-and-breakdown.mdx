@@ -1,0 +1,108 @@
+---
+title: "Funnel, Breakdown, and User Events"
+description: "Find the step where viewers actually stop, split any metric by segment, and read the raw event feed underneath both."
+icon: "filter"
+---
+
+Three tabs, three different jobs on the same session data: **Funnel** finds where
+viewers drop, **Breakdown** compares segments side by side, and **User Events** is the
+raw feed when you need to see exactly what one session did.
+
+## Funnel
+
+Eight steps, in a fixed order:
+
+| # | Step | Counted as |
+| --- | --- | --- |
+| 1 | Page view | Sessions that fired a page view |
+| 2 | Play | Sessions that fired a qualifying play event |
+| 3 | 25% watched | Sessions whose furthest point reached 25% of the video |
+| 4 | 50% watched | Sessions whose furthest point reached 50% |
+| 5 | 75% watched | Sessions whose furthest point reached 75% |
+| 6 | Pitch reached | Sessions that reached your configured Pitch Time |
+| 7 | Watched to end | Sessions whose furthest point reached the end |
+| 8 | Conversion | Sessions with a verified conversion |
+
+**Play** counts the same events that count as a play everywhere else in TrackPlay:
+`video-play`, `video-unmute`, `video-resume`, `video-continue`, `video-restart`, and
+`video-autoplay-sound`. Muted autoplay alone (`video-autoplay`) does not count. A session
+that never interacted beyond a silent autoplay has not cleared this step.
+
+**Pitch reached** disappears from the funnel entirely when zero sessions reached it in
+the selected range, which in practice means either you have not set a Pitch Time on this
+video, or nobody has reached it yet in this window.
+
+<Note>
+  Step counts are not all measured the same way. Page view, Play, Watched to end, and
+  Pitch reached use exact distinct counting. The three watched-percentage steps and the
+  Conversion step use ClickHouse's approximate distinct counting, which carries roughly
+  0.5% error at typical volumes. The gap is deliberate: quartile and conversion counts
+  come from separate tables joined by session, and an exact count there would cost more
+  than the precision is worth. It does not affect the ordering or the shape of the
+  funnel.
+</Note>
+
+### The two percentages
+
+Each step shows two numbers.
+
+**Step conversion**, the rate from the step immediately before it:
+
+```
+step conversion = (this step's sessions ÷ previous step's sessions) × 100
+```
+
+**Overall conversion**, the rate from the top of the funnel:
+
+```
+overall conversion = (this step's sessions ÷ page view sessions) × 100
+```
+
+The connector between two steps shows the drop as a percentage, which is the mirror of
+step conversion: what did not carry through, not what did.
+
+## Breakdown
+
+Take any metric card from your General tab and split it by a dimension, three of which
+are available: **device**, **orientation**, and **traffic source**. Breakdown ranks the
+top 5 segments by volume and shows up to 6 metric columns, using whichever metrics you
+have configured on General, in that order. Smaller segments are rolled up and disclosed,
+not silently dropped: a note states how many segments and how many sessions did not make
+the top 5.
+
+<Warning>
+  Choosing **orientation** hides conversion and revenue columns. A viewer who rotates
+  their phone mid-playback appears in both the portrait and landscape segments, so a
+  session that later converts would be counted in full on both sides, inflating both
+  numbers. Device and traffic source do not have this problem. Break down by one of those
+  two to compare conversion or revenue across segments.
+</Warning>
+
+## User Events
+
+The raw feed behind every chart on this video: one row per tracked interaction, most
+recent first, up to 100 rows per load (the API accepts up to 500). A footer states how
+many of the total the feed is currently showing.
+
+TrackPlay tracks these event types in this feed:
+
+<CodeGroup>
+```text Tracked event types
+click, hover, switched-tab, video-timed-event,
+video-play, video-pause, video-resume, video-rewind, video-forward,
+video-unmute, video-autoplay, video-autoplay-sound, video-ready,
+playback-speed
+```
+</CodeGroup>
+
+High-volume heartbeat events (the 10-second watch-time ticks that build the retention
+curve) are deliberately excluded. At real traffic volumes they would drown out every
+other row and are not meaningful read one at a time.
+
+Each row shows the event type, a short description built from that event's own fields
+(the clicked link's text, how many seconds a viewer was away before returning, the new
+playback speed, and so on), the position in the video when it fired, a shortened session
+code, browser, country, and both an absolute and a relative timestamp.
+
+Search by free text, or filter by event type using the pills above the feed. Both apply
+alongside the shared date range and attribution filters at the top of the page.

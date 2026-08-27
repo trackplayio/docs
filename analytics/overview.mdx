@@ -68,9 +68,9 @@ Which traffic pays.
 | **RPV** | Revenue per play |
 | **AOV** | Average order value |
 | **ROAS** | Revenue ÷ affiliate payout |
-| **Net** | Revenue − payout |
 
-Broken out by affiliate, by referring domain, and by traffic source.
+Broken out by affiliate, by referring domain, and by traffic source. See
+[Sources](/analytics/sources) for the full report and how each session is classified.
 
 <Note>
   ROAS is `null` (not zero) when no payout was captured for that source. A zero would
@@ -142,6 +142,9 @@ unmute, did they come back, did they click. Cold, warm, or hot.
 Your data is yours.
 
 - **Webhooks** push events to you as they happen.
-- The **[Analytics Export API](/api-reference/authentication)** pulls summaries,
-  retention curves, raw events and conversions, with a token carrying `analytics:read`.
-- Bulk exports run as a job and hand back a download URL.
+- The **[Analytics API](/api-reference/analytics)** pulls summaries, retention curves, raw
+  events and conversions, with a token carrying `analytics:read`.
+- **Report exports** run as a job. You queue one with `POST /exports`, poll it, and get a
+  download URL back when it is built.
+- **[Audience exports](/audience/exports)** work differently. They stream a CSV straight
+  back to you, with no job and no URL, and they are capped per download.

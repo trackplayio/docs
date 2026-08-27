@@ -13,8 +13,14 @@ Connect your WarriorPlus vendor account to TrackPlay to automatically track affi
 1. Go to **Integrations** → find **WarriorPlus** → click **Connect**
 
 ### Step 2: Configure
-1. Select the tracking parameter (`aff_sub`, `aff_sub2`, or `aff_sub3`)
+1. Select the tracking parameter: `sid` or `tid`
 2. Click **Save & Verify**
+
+<Note>
+  `sid` and `tid` are the only two parameters WarriorPlus echoes back on the postback.
+  Anything else means the sale posts back without a session and is credited as organic,
+  with no error shown and the integration still reading **Active**.
+</Note>
 
 ### Step 3: Add Postback URL and Verify
 1. Copy the Postback URL from the setup modal

@@ -1,0 +1,104 @@
+---
+title: "Insights"
+description: "An automatic report per video that reads your transcript against your real session data, tells you which second costs you the sale, and shows you every angle it checked, including the ones that found nothing."
+icon: "lightbulb"
+---
+
+Your retention curve shows you where viewers left. Insights tells you what was on screen
+when they left, and what to do about it.
+
+Open a video and click **Insights**.
+
+## When a report runs
+
+A report runs automatically once a video passes **300 plays**, and re-runs at most once
+every 24 hours after that. Insights is available on Basic plans and up.
+
+You do not schedule it and you do not prompt it. If the video does not have enough
+traffic yet, the tab tells you how many plays are still missing.
+
+## What is in a report
+
+Every report opens with one headline: the single change worth making first. Under it:
+
+<CardGroup cols={2}>
+  <Card title="Behaviour conclusions" icon="magnifying-glass-chart">
+    What viewers did, tied to the moment they did it, with the numbers behind the claim.
+  </Card>
+  <Card title="Timed CTA suggestions" icon="hand-pointer">
+    A second, a reason, the line of transcript it sits on, and a one-click apply.
+  </Card>
+  <Card title="Dead zones" icon="scissors">
+    Stretches worth tightening, with the quote that starts them.
+  </Card>
+  <Card title="Player settings and test ideas" icon="flask">
+    Changes to autoplay, prompts and timing, plus the A/B tests worth running next.
+  </Card>
+</CardGroup>
+
+Every conclusion cites the numbered findings it came from, and every finding carries its
+own evidence sentence with the measured numbers in it. If a claim does not have a number
+behind it, it does not ship.
+
+## What we checked
+
+This is the panel that separates Insights from a wall of AI confidence: it shows you all
+nine angles the report looked at, including the ones that found nothing and the ones that
+do not have enough data yet.
+
+Each of the nine dimensions draws its own wedge:
+
+| Wedge | Reads as |
+| --- | --- |
+| Pale grey, wide | **Data depth.** How much evidence fed that dimension. |
+| Solid coral, narrow | **Findings strength.** How far it reaches is the confidence of the strongest finding. How wide it is, is how many findings fired. |
+
+Three states are worth telling apart, and the chart draws each one differently:
+
+- **A grey wedge with coral inside it.** The dimension had data and found something.
+- **A grey wedge with no coral.** The dimension had plenty of data and found nothing
+  unusual. That is a real answer, not a gap.
+- **No wedge at all.** The signal is not being collected on this video yet. The label is
+  greyed out and the list on the right says what is still missing.
+
+The list beside the chart says the same thing in words, one row per dimension, with the
+volumes that fed it. When a check is still collecting, the row names the specific check
+rather than the whole dimension: a dimension can have plenty of data overall while one of
+its sub-checks is still waiting.
+
+<Note>
+  A dimension sitting at zero is normal and expected. Buyer behaviour needs conversions,
+  Intent needs checkout clicks, and Page scroll needs the newer behaviour signals. A
+  video can carry a strong report with four of the nine dimensions quiet.
+</Note>
+
+## Sound on versus muted
+
+When your video autoplays muted, the report compares viewers who turned the sound on
+against viewers who stayed muted, **within the autoplay population only**.
+
+<Warning>
+  **This comparison is observational. It does not mean turning the sound on causes the
+  difference.** Browsers decide who gets unmuted autoplay from their own record of how
+  much video that person already engages with, so the sound-on group is selected in
+  advance for being the kind of viewer who watches. Read the gap as a description of two
+  groups you already have, not as the lift you would get by forcing sound on everyone.
+</Warning>
+
+## Applying a suggestion
+
+A timed CTA suggestion applies straight to the video's timed events with one click. It
+arrives with the trigger time, the label and the show/hide selector already filled in, so
+what you are approving is the moment, not a form.
+
+Everything else in the report is advice you act on yourself: trims live in your editor,
+settings patches point at the exact toggle, and test ideas name the hypothesis.
+
+## The digest email
+
+When a new report is ready, TrackPlay emails you a digest with the headline for each
+video. It arrives in **the language set on your profile**, like every other TrackPlay
+email.
+
+Turn it off from the Insights tab. The reports keep generating; you just stop being
+emailed about them.

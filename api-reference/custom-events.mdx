@@ -291,7 +291,7 @@ await fetch('https://e.trackplay.io/v1/event', {
   body: JSON.stringify({
     event: 'lead_captured',
     email: 'buyer@example.com',
-    event_id: 'lead_88213',   // your own id — makes the retry safe
+    event_id: 'lead_88213',   // your own id, which makes the retry safe
   }),
 });
 ```
@@ -366,9 +366,16 @@ retry is free.
     `event` contained nothing usable after normalisation (e.g. `"!!!"`). We reject rather
     than invent a name for you.
   </Accordion>
+  <Accordion title="401: INVALID_TOKEN">
+    The token is wrong, expired, or revoked. **The legacy `tp_` workspace key always lands
+    here.** Ingest accepts scoped `tplt_` tokens only, and anything without that prefix is
+    rejected before its scopes are ever read, so a legacy key fails as an invalid token
+    rather than as a missing scope. Mint an `events:write` token instead. See
+    [Authentication](/api-reference/authentication).
+  </Accordion>
   <Accordion title="403: INSUFFICIENT_SCOPE">
-    Your token lacks `events:write`. The legacy `tp_` workspace key always lands here: it
-    is rejected on purpose. See [Authentication](/api-reference/authentication).
+    The token is valid but was not granted `events:write`. The response names the scope in
+    `required`. You cannot add a scope to an existing token, so mint a new one.
   </Accordion>
   <Accordion title="422: TOO_MANY_EVENT_NAMES">
     You have hit the 100-name cap. The response tells you how many names are in use.

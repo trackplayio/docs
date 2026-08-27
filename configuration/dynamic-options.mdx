@@ -13,7 +13,7 @@ The OptionsManager is available in TrackPlay player version 6.0+ and is automati
 
 ## Overview
 
-The OptionsManager provides a clean API for modifying player options using dot notation paths, making it easy to change nested configuration values and immediately apply them to running player instances.
+The OptionsManager changes player options by dot-notation path, so you can set a nested value and apply it to a running player without rebuilding the whole options object.
 
 ### Key Features
 
@@ -141,57 +141,92 @@ player.setOption('playback_options.muted', false);       // Mute/unmute video
 player.setOption('playback_options.playback_rate', 1.75); // Playback speed (0.25-4.0)
 ```
 
+<Warning>
+  Option keys are matched exactly. Set a key that does not exist and nothing happens: no
+  error, no warning, no effect. Check the key against the lists below before you ship it.
+</Warning>
+
 ### Continue Watching Options (`continue_watching_options`)
 
-Control continue watching functionality:
+The Continue or Restart choice a returning viewer sees.
 
 ```javascript
-// Continue watching behavior
 player.setOption('continue_watching_options.enabled', true);
-player.setOption('continue_watching_options.minimum_watch_time', 30);
+player.setOption('continue_watching_options.time', '00:30');
+player.setOption('continue_watching_options.backdrop_color', '#000000');
 ```
+
+<Note>
+  `time` is a clock string, `MM:SS` or `HH:MM:SS`, not a number of seconds. Passing `30`
+  fails validation.
+</Note>
 
 ### Captions Options (`captions_options`)
 
-Configure subtitle/captions display:
+Captions are a list of tracks plus the styling applied to all of them. There is no
+`enabled` key and no `language` key. A track is selected by its `lang`, and the one marked
+`default` is the one that shows.
 
 ```javascript
-// Caption functionality
-player.setOption('captions_options.enabled', true);
-player.setOption('captions_options.language', 'en');
 player.setOption('captions_options.font_size', '16px');
+player.setOption('captions_options.text_color', '#ffffff');
+player.setOption('captions_options.background_color', 'rgba(0,0,0,0.75)');
 ```
+
+Styling keys: `text_color`, `background_color`, `font_family`, `font_weight`,
+`font_size`, `padding`. Each track carries `lang`, `label`, `default` and its cue `data`.
 
 ### Smart Orientation Options (`smart_orientation_options`)
 
-Handle video orientation detection:
+Serves the portrait version of the video to a portrait device.
 
 ```javascript
-// Orientation handling
 player.setOption('smart_orientation_options.enabled', true);
-player.setOption('smart_orientation_options.auto_switch', true);
 ```
+
+`enabled` is the only key. Which video is served is decided by the uploaded portrait
+version, not by a switching option.
 
 ### Turbo Options (`turbo_options`)
 
-Control turbo/speed functionality:
+Playback speed, and speed as a test.
 
 ```javascript
-// Turbo settings
-player.setOption('turbo_options.enabled', true);
-player.setOption('turbo_options.speeds', [1, 1.25, 1.5, 2]);
-player.setOption('turbo_options.default_speed', 1);
+// A fixed speed for every viewer
+player.setOption('turbo_options.speed', 1.25);
+
+// Or let two speeds compete, split by weight
+player.setOption('turbo_options.ab_testing', true);
+player.setOption('turbo_options.items', [
+  { speed: 1.0,  weight: 50 },
+  { speed: 1.25, weight: 50 },
+]);
 ```
+
+| Key | Type | Bounds |
+| --- | --- | --- |
+| `speed` | number | 0.6 to 2 |
+| `ab_testing` | boolean | Arms are only split when this is true |
+| `items` | array | Up to 10 arms, each with `speed` and `weight` |
+
+<Warning>
+  `items` on its own does nothing. The split runs only when `ab_testing` is true, which is
+  deliberate: the editor seeds two default arms as soon as the tab is opened, and without
+  that guard opening the tab would start a speed test on the video by itself.
+</Warning>
 
 ### Paused Options (`paused_options`)
 
-Control paused state behavior:
+The paused state is a designed overlay, not a blank frame.
 
 ```javascript
-// Paused overlay settings
-player.setOption('paused_options.show_overlay', true);
-player.setOption('paused_options.custom_content', 'Custom paused message');
+player.setOption('paused_options.enabled', true);
+player.setOption('paused_options.html', '<h2>Still there?</h2>');
+player.setOption('paused_options.backdrop_color', 'rgba(0,0,0,0.6)');
 ```
+
+Keys: `enabled`, `template`, `html`, `custom_html` (required when `template` is
+`custom`), `backdrop_color`, and the per-orientation style and canvas blocks.
 
 ### Thumbnail Options (`thumbnail_options`)
 
@@ -310,10 +345,10 @@ player.on('time', (event) => {
         colorChanged = true;
     }
     
-    // Enable turbo mode at 1 minute
-    if (currentTime > 60 && !turboEnabled) {
-        player.setOption('turbo_options.enabled', true);
-        turboEnabled = true;
+    // Speed the video up once past the first minute
+    if (currentTime > 60 && !spedUp) {
+        player.setOption('turbo_options.speed', 1.25);
+        spedUp = true;
     }
 });
 ```

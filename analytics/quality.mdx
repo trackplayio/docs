@@ -1,0 +1,165 @@
+---
+title: "Quality"
+description: "Startup time, stalls, renditions, and failures, measured from the player itself, with an honest accounting of how much of your traffic these numbers actually cover."
+icon: "gauge-high"
+---
+
+A slow player loses the sale before the hook ever plays. Open a video and click
+**Quality** to see whether that is happening to you.
+
+<Warning>
+  **Read this before trusting a low error rate.** The telemetry stream behind this tab
+  only began landing on **July 15, 2026**, and then video by video, as each video's
+  player bundle recompiled. A window that reaches back further than that mixes real
+  coverage with silence. Session counts on the rest of the app cover the whole window
+  you selected. This tab's numbers do not, until every video in scope has been
+  recompiled since that date. TrackPlay states the real coverage span rather than
+  hiding the gap: see [Data coverage](#data-coverage) below.
+</Warning>
+
+## Speed
+
+| Metric | Definition | Warns above |
+| --- | --- | --- |
+| **Startup time (p50 / p95)** | Time from playback being requested to the first frame rendering, at the median and the 95th percentile. | 4,000 ms |
+| **Load time (p50 / p95)** | Time from page load to the player reporting ready (manifest or metadata parsed), at the median and the 95th percentile. | 4,000 ms |
+
+Startup time is the true "how fast does it start" number: it measures the player, not
+how long a viewer waited before clicking. Load time comes first in the sequence. A
+player can be fully ready long before anyone asks it to play.
+
+The p95 figures are the ones worth watching. They describe your worst-served 5% of
+viewers, and worst-served viewers are the ones who leave.
+
+## Stability
+
+| Metric | Definition | Warns above |
+| --- | --- | --- |
+| **Rebuffer session rate** | Share of sessions that stalled at least once after playback began. | 5% |
+| **Rebuffer ratio** | Share of total watch time lost to mid-play stalling. | 2% |
+| **Dropped frame rate** | Share of decoded frames the viewer's device failed to render. | 5% |
+
+<Note>
+  A rebuffer only counts when it is real. TrackPlay excludes a stall reported before 3
+  seconds of media time (that is startup cost, already covered above), a stall shorter
+  than 500 milliseconds (measured jitter, not something a viewer notices), and a buffer
+  refill immediately after a backgrounded tab returns to the foreground (a phone locking
+  and unlocking, not a network problem). What remains is a stall a real viewer sat
+  through.
+</Note>
+
+Dropped frame rate is a decode problem, not a network one. A high value usually means the
+rendition is heavier than the viewer's device can render smoothly, not that their
+connection is slow.
+
+## Renditions
+
+The quality distribution shows actual seconds watched at each rendition (1080p, 720p,
+and so on), not only how often the player switched levels. A session that sat at 480p
+for its whole watch time and a session that spent one second at 480p while switching
+constantly look very different in seconds watched, and identical in a raw switch count.
+That is why TrackPlay reports seconds.
+
+## Failures
+
+**Playback failure rate** is the headline number: the share of playback attempts that
+ended in a failure the player could not recover from. Auto-recovered hiccups, buffer
+nudges, silent retries, and the fallback from HLS to MP4, are not counted here. A second
+line under the headline states the share of attempts that saw *any* error at all,
+recovered or not, since most errors do recover and the viewer keeps watching. Warns
+above 5%.
+
+### Lost playback
+
+Not every session that hits an error loses the video. TrackPlay checks each errored
+session against three independent proofs before calling it lost:
+
+1. It never fired a qualifying play event.
+2. None of its own events reported a video position greater than zero.
+3. It has no watch-progress record with a position greater than zero.
+
+Only a session that fails all three never actually got picture. Every other errored
+session recovered and kept watching, and is not counted as lost.
+
+### One failure, one row
+
+A single dead player can report the same failure three times: hls.js flags it first,
+the native `<video>` element reacts to it second, and the MP4 fallback records how the
+recovery attempt ended third. Grouping by every error row would count one broken session
+as three, and would often split the blame across two different causes for what was one
+event.
+
+TrackPlay groups the error panel by each session's **earliest** error instead, on the
+reasoning that the failure cascade is causal: the first error is the cause, and every
+error after it in the same session is fallout. Every row in the panel is counted in
+**sessions**, not raw error events, for the same reason. A session with a raw event count
+is available for context, but it is never the headline.
+
+### Source: where the failure was reported, not who caused it
+
+Each error row carries a source: **Encoding**, **Network**, **DRM**, **Browser**,
+**Recovered**, or **Unknown**. Read this as where the failure surfaced, not as an
+assignment of blame.
+
+<Note>
+  A source of Encoding is only kept when there is positive evidence the viewer's browser
+  could have played standard media and TrackPlay's stream still failed. When a session's
+  own codec probe shows its browser cannot decode H.264 at all (a Chromium build without
+  proprietary codec support, for example), no encode TrackPlay could ship would have
+  played there. That session is reported under Browser instead, so a client limitation is
+  never billed to your video as an encoding fault.
+</Note>
+
+### The message a viewer sees
+
+By default, a fatal playback failure shows no alarming error text, only a button
+labeled **Continue**. Most triggers for this overlay are a phone locking and unlocking,
+where the video is fine and needs one tap to resume from where the viewer left off,
+so TrackPlay frames it as continuing rather than as an error. You can set your own
+message and button text in the player's style options.
+
+## Delivery by connection
+
+A separate table splits every metric above by the viewer's reported connection, so you
+can tell a delivery problem from a player problem. It comes in two views: by connection
+type (4G, 3G, and so on) and by measured speed, using the player's own throughput
+estimate rather than the browser's self-reported figure, which is coarse and stays
+pinned near a flat estimate across a wide range of real speeds.
+
+<Note>
+  Safari on any platform, and every browser on iOS, does not implement the browser API
+  this comes from at all. Those sessions land in an "unknown" bucket by construction.
+  It is a platform limitation, not a tracking gap, and it means the unknown bucket
+  skews heavily toward Apple devices.
+</Note>
+
+## Autoplay
+
+**Forced audio autoplay rate** reports how often a browser let a video start with sound
+before the viewer touched anything. This is a browser policy outcome, not a viewer
+choice: most browsers block unmuted autoplay outright, so a low number is the normal
+baseline and carries no warning threshold.
+
+## Data coverage
+
+<AccordionGroup>
+  <Accordion title="Why a KPI can read better than reality">
+    Every rate on this tab divides a numerator built from the young telemetry stream by
+    a denominator of session counts, which cover the full window you selected. On a video
+    whose player bundle recompiled only a few days ago, that numerator reflects a handful
+    of recent sessions while the denominator reflects the whole window, and every rate
+    reads far lower than the truth until the rest of the window fills in.
+  </Accordion>
+  <Accordion title="The limited sample banner">
+    When a video has fewer than 200 sessions with telemetry in scope, the tab shows a
+    banner stating the exact session count and mutes the red warning styling on every
+    threshold. A stall rate computed from a handful of sessions is noise, not a verdict,
+    and TrackPlay does not color it like one.
+  </Accordion>
+  <Accordion title="The error panel states its own span">
+    Separately from the sample-size banner, the error panel reports the real first and
+    last timestamp of the error rows behind it. When that span is narrower than your
+    selected date range, a note states it plainly: session counts cover the whole range,
+    so the error-derived rates read low.
+  </Accordion>
+</AccordionGroup>

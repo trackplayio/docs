@@ -1,0 +1,185 @@
+---
+title: "CRM Tagging"
+description: "Tag a contact in ActiveCampaign or GoHighLevel the moment they watch far enough into a video to prove they are interested."
+icon: "tags"
+sidebarTitle: "CRM Tagging"
+---
+
+A viewer who watches to the pitch is not the same lead as one who bounced at second ten.
+Watch-depth tagging writes that difference straight into your CRM: name a moment in the
+video, and every viewer who reaches it gets tagged the instant they do.
+
+Two CRMs, connected the same way: **ActiveCampaign** and **GoHighLevel**.
+
+## Connect one
+
+<Tabs>
+  <Tab title="ActiveCampaign">
+    <Steps>
+      <Step title="Open Integrations">
+        Click **Integrations** in the sidebar, find **ActiveCampaign**, and click
+        **Connect**.
+      </Step>
+      <Step title="Paste your API URL and key">
+        Both are in ActiveCampaign under **Settings → Developer**.
+      </Step>
+      <Step title="Optional: a list ID">
+        When set, a tagged contact is also subscribed to this list. TrackPlay never
+        re-subscribes a contact who unsubscribed themselves, even if you set a list here.
+      </Step>
+      <Step title="Save">
+        The integration goes **Active** immediately.
+      </Step>
+    </Steps>
+
+    <ParamField body="api_url" type="string" required>
+      Your account's API base, e.g. `https://youraccount.api-us1.com`.
+    </ParamField>
+    <ParamField body="api_key" type="string" required>
+      Your API-Token from **Settings → Developer**.
+    </ParamField>
+    <ParamField body="list_id" type="string">
+      Subscribes a tagged contact to this list. Optional.
+    </ParamField>
+  </Tab>
+  <Tab title="GoHighLevel">
+    <Steps>
+      <Step title="Open Integrations">
+        Click **Integrations** in the sidebar, find **GoHighLevel**, and click **Connect**.
+      </Step>
+      <Step title="Paste a Private Integration Token">
+        Generate one in your GHL sub-account under **Settings → Private Integrations**.
+      </Step>
+      <Step title="Paste your location ID">
+        Required alongside the token.
+      </Step>
+      <Step title="Save">
+        The integration goes **Active** immediately.
+      </Step>
+    </Steps>
+
+    <ParamField body="private_token" type="string" required>
+      A v2 Private Integration Token. GoHighLevel's v1 API key is deprecated and cannot be
+      newly generated, so this is the only supported path for a new connection.
+    </ParamField>
+    <ParamField body="location_id" type="string" required>
+      Your GHL sub-account id.
+    </ParamField>
+  </Tab>
+</Tabs>
+
+## Tag a moment in the video
+
+<Steps>
+  <Step title="Open the video's Customize tab">
+    Go to the video, then **Customize → Timed Events**.
+  </Step>
+  <Step title="Add a timed event">
+    Name it and set when it fires: a time in seconds, or a percentage of the video.
+  </Step>
+  <Step title="Turn on Tag in CRM">
+    A new field appears: **CRM Tags**.
+  </Step>
+  <Step title="Enter tag names">
+    Comma-separated, e.g. `watched-50, hot-lead`. TrackPlay creates a tag that does not
+    already exist in your CRM; it does not require you to pre-create anything.
+  </Step>
+  <Step title="Save and deploy the video">
+    The action is baked into the player build the next time it recompiles.
+  </Step>
+</Steps>
+
+## Who gets tagged
+
+<Warning>
+  Watch-depth tagging only works for a viewer whose email TrackPlay already knows. There
+  are two ways it knows: an [in-video lead form](/player/lead-capture) they submitted
+  earlier in the same session, or an [`identify`](/api-reference/identify) call carrying
+  their raw email. A viewer who has done neither crosses the timed event with nothing to
+  tag, and TrackPlay does not tag them.
+</Warning>
+
+Whichever you use, it has to happen **before** the moment you want to tag. A "tag at 50%"
+event on a video where the viewer is still anonymous at the 50% mark never tags anyone, no
+matter how many viewers cross it.
+
+### Tagging a contact you already have
+
+Your page often knows who the viewer is already: a members area, an upsell, a broadcast
+link from your CRM. Identify them and no form is needed.
+
+Drop this above your embed. On a GoHighLevel page you can fill it straight from their
+merge fields:
+
+```html
+<script>
+  window.trackplayIdentify = window.trackplayIdentify || function () {
+    (window.__tpIdentityQueue = window.__tpIdentityQueue || []).push(arguments);
+  };
+  trackplayIdentify({
+    email: '{{contact.email}}',
+    external_id: '{{contact.id}}'
+  });
+</script>
+```
+
+The stub queues the call so it survives the player still loading. From then on the viewer
+counts as known, and your watch-depth tags apply to that contact.
+
+<Warning>
+  **Send the email raw, not pre-hashed.** A hashed identity still links the person for
+  reporting and Customer 360, but only a raw email creates the contact record that CRM
+  tagging reads, so a hashed-only identify never tags. The browser hashes it for you
+  before it leaves the page.
+</Warning>
+
+<Note>
+  The **email** is what matches the contact. Both CRMs upsert on it. A CRM's own contact
+  id is worth sending as `external_id` so it lands on the viewer's profile, but on its own
+  it will not tag anyone.
+</Note>
+
+## What counts as success
+
+When both CRMs are connected, a tag action fires to both. Each is independent: ActiveCampaign
+failing does not stop GoHighLevel from receiving the same tag, and the reverse.
+
+For ActiveCampaign, TrackPlay reports success only when the contact synced **and** every
+tag actually attached. A tag that fails to attach (a rate limit, a malformed name) is not
+swallowed into a false "delivered": the failure is logged with which tags did not stick.
+
+For GoHighLevel, a tag is a plain string on the contact, created if it does not already
+exist. `POST /contacts/upsert` on the v2 API does the contact match, the field update, and
+the tag attach in one call.
+
+<Note>
+  ActiveCampaign list subscription never resurrects a contact who unsubscribed themselves.
+  TrackPlay checks their current list status before subscribing and leaves a manual
+  opt-out alone, even if the video's action has a list ID set.
+</Note>
+
+## When it does not work
+
+<AccordionGroup>
+  <Accordion title="Viewers cross the timed event but nothing shows up in the CRM">
+    The most common cause is identity: confirm the viewer either submitted a lead form or
+    was passed to [`identify`](/api-reference/identify) **before** the timed event fired.
+    TrackPlay has no contact to tag without one. If you are using identify, check you are
+    sending a raw `email` and not only a hash, because a hashed-only identify ties the
+    person for reporting but does not create the contact record tagging reads.
+  </Accordion>
+  <Accordion title="Some tags land, others do not">
+    ActiveCampaign rate-limits at 5 requests per second. A video with many tags on one
+    event can hit it; TrackPlay retries a 429 up to twice, respecting the `Retry-After`
+    header, before giving up on that tag.
+  </Accordion>
+  <Accordion title="GoHighLevel: 'GoHighLevel v2 needs a location_id'">
+    The Private Integration Token is saved but the location ID field is empty. Both are
+    required together.
+  </Accordion>
+  <Accordion title="A contact was resubscribed to a list they left">
+    This should not happen: TrackPlay checks list membership status before subscribing and
+    skips a contact marked unsubscribed. If you see it, the contact's status in
+    ActiveCampaign may not be a plain unsubscribe; check their membership record directly.
+  </Accordion>
+</AccordionGroup>

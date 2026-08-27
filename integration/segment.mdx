@@ -32,13 +32,34 @@ The Segment integration:
 
 ## Events Sent to Segment
 
+Every call carries `videoCode`, including the ones that list other properties.
+
 | Event | Properties | When |
 |-------|-----------|------|
 | `Video Played` | `videoCode` | Video starts playing |
 | `Video Paused` | `videoCode` | Video is paused |
 | `Video Completed` | `videoCode` | Video finishes |
-| `Video Progress` | `videoCode`, `percentComplete` | At 25%, 50%, 75% milestones |
-| `Video Conversion` | `videoCode`, conversion data | A conversion is recorded |
+| `Video Progress` | `videoCode`, `percentComplete` | At the 25%, 50% and 75% marks |
+| `CTA Clicked` | `videoCode`, plus the card's own detail | A viewer clicks a CTA card |
+
+## Conversions do not come through Segment
+
+There is no `Video Conversion` event, and there cannot be one.
+
+A conversion completes on your cart's domain, after the viewer has left your page. The
+player is gone by then, so the browser never sees the sale and has nothing to send.
+
+Use one of these instead:
+
+<CardGroup cols={2}>
+  <Card title="Cart postbacks" icon="cart-shopping" href="/integration/conversion-tracking">
+    Your cart posts the sale to TrackPlay server-side, and it lands on the viewer's
+    session.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/integration/webhooks">
+    Subscribe to `conversion.created` and forward it into Segment from your own backend.
+  </Card>
+</CardGroup>
 
 ## Troubleshooting
 

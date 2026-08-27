@@ -1,0 +1,145 @@
+---
+title: "Hot leads"
+description: "A 0 to 100 score built from watch behavior, calibrated against real sales, with the exact weights published so you can check its work."
+icon: "fire"
+---
+
+Most "engagement scores" are a black box: a number with no explanation attached, tuned by
+someone who does not sell what you sell. TrackPlay's is not. Every weight below is public,
+and every score comes with the plain-language reason behind it. That is the point: a
+score you cannot audit is not a score, it is a guess wearing a decimal point.
+
+Hot Leads is the ranked call list. It shows the viewers who have not bought yet and are
+acting like they are about to.
+
+## What counts as a lead
+
+A lead is a session, not a person. TrackPlay scores individual visits, because the same
+viewer can be cold on Monday and hot on Thursday, and the call list should reflect
+Thursday.
+
+The list only includes:
+
+- Sessions that have **not converted**. A viewer who already bought does not need a call.
+- Sessions from the last **90 days** by default.
+- A maximum of **500 rows**, ranked by score, highest first.
+
+Bots are excluded entirely, not penalized. A session TrackPlay believes is automated
+never appears on the list and never affects the score of anything else.
+
+## The score
+
+The score runs 0 to 100. It is built from watch behavior, engagement actions, and traffic
+quality, each weighted by how strongly it actually predicted a sale on real conversion
+data, not by guesswork about what "should" matter.
+
+<Note>
+  The weights were set by measuring the real conversion rate behind each signal (687,000
+  sessions, 4,924 of them converting) and scaling each one to its lift over the baseline
+  conversion rate. A signal that converts twice as often as baseline is worth roughly 10
+  points. This is why "reached the offer" outweighs "unmuted": it converts more.
+</Note>
+
+| Signal | Points | Why |
+| --- | --- | --- |
+| Clicked a CTA | **+30** | The strongest single signal. Converts 7.8 times the baseline rate. |
+| Reached the offer | **+24** | Watched to the pitch. Converts 5.3 times baseline. |
+| Rewatched a section | **+18** | Went back to hear something again. Converts 3.6 times baseline. |
+| Returned or resumed | **+16** | A second visit, or picked a paused video back up. Converts 3.2 times baseline. |
+| Watch depth | **up to +20** | Scaled continuously by how far into the video they got. A viewer at 60% of the furthest-watched point earns 12 of the 20 points, not a flat bonus at a threshold. |
+| Unmuted | **+10** | Turned the sound on by choice. Converts 2 times baseline. |
+| Mobile device | **+4** | VSL traffic is mobile-first here; mobile converts better than desktop on this signal set. |
+| Played at all | **+3** | Table stakes. Converts only 1.1 times baseline on its own. |
+| Desktop | **−12** | Converts at 0.3 times baseline on this traffic. A real penalty, not a missing bonus. |
+| Datacenter traffic | **−40** | Bot-adjacent. Converts at 0.12 times baseline. The heaviest single weight in either direction. |
+
+The total is clamped to a floor of 0 and a ceiling of 100. A session cannot score below
+zero no matter how many penalties stack, and cannot score above 100 no matter how many
+positive signals fire.
+
+### Tiers
+
+<CardGroup cols={3}>
+  <Card title="Cold" icon="snowflake">
+    Below **12**. Converts at 0.013% in the calibration data.
+  </Card>
+  <Card title="Warm" icon="temperature-half">
+    **12 to 54**. Converts at 0.235%, about 18 times the cold rate.
+  </Card>
+  <Card title="Hot" icon="fire">
+    **55 and above**. Converts at 3.924%, about 5.5 times the site baseline and 300 times
+    the cold tier.
+  </Card>
+</CardGroup>
+
+Hot is a defensible call list because it is validated against outcomes, not asserted.
+If a future re-check ever shows hot leads no longer converting far above cold leads, the
+weights are wrong and need to be re-derived. A score that stops separating winners from
+the rest is not worth publishing, and TrackPlay treats it that way internally.
+
+### Every score shows its reasons
+
+A lead's card does not stop at showing "78". It shows the sentence behind it: *"Reached the
+offer, clicked a CTA, returning visitor. Has not converted yet, prioritize for
+follow-up."* Each contributing signal is listed individually, positive and negative, so
+you can see exactly why a viewer ranked where they did instead of trusting a number on
+faith.
+
+## The reachability strip
+
+A high score does not mean you can act on it. Every lead and every profile carries a
+reachability state, and TrackPlay shows it honestly rather than implying a channel that
+does not exist.
+
+<AccordionGroup>
+  <Accordion title="Reachable">
+    A real email or phone number is on file for this person. You can email or call them
+    directly.
+  </Accordion>
+  <Accordion title="Known, no channel">
+    TrackPlay has a hashed email, a hashed phone, or a cross-device cookie for this
+    person, but no raw address or number. You cannot email or call them, but you can
+    upload the hash to a Meta, Google, or TikTok custom audience and retarget them there.
+  </Accordion>
+  <Accordion title="Anonymous">
+    No identity signal at all. TrackPlay knows the session's behavior and where it came
+    from, and nothing about who it was.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  Reachability checks Meta, Google, and TikTok specifically. There is no Microsoft Ads
+  match today.
+</Note>
+
+Most hot leads are anonymous, because a viewer who has not converted has usually not
+handed over contact details either. That is expected: the score exists to tell you who is
+worth chasing, and the reachability strip tells you honestly whether you can chase them
+by name or only by retargeting the browser.
+
+## Hot Leads vs. All Viewers
+
+Two different lists live under Audience, and they answer different questions.
+
+| | Hot Leads | All Viewers |
+| --- | --- | --- |
+| Scope | Non-converted sessions scored 55+ | Every identified viewer |
+| Window | Last 90 days, capped at 500 rows | Last 7 days by default |
+| Question it answers | Who should I call today? | Who has TrackPlay identified recently? |
+
+All Viewers is the identity rollup: every profile the identity graph has resolved, most
+recent first, whether or not they scored high on anything. Hot Leads is narrower and
+sharper: it is the follow-up list, filtered to people who have not bought and are
+behaving like they are close.
+
+## Automatic follow-up
+
+The moment a session's score crosses 55, TrackPlay fires a `lead.hot` event into your
+webhook and CRM-tag pipeline, so a Zapier flow or a CRM automation can pick it up without
+anyone checking the dashboard. Each session beacons once: a 30-day dedup guard means a
+lead that stays hot for weeks does not spam your CRM with the same trigger every day.
+
+<Note>
+  No plan gates Hot Leads or the reachability strip. Every workspace on every plan sees
+  the same score, the same weights, and the same reasons.
+</Note>

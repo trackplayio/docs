@@ -1,0 +1,98 @@
+---
+title: "Video library"
+description: "Upload limits, the portrait mobile version, auto-publish, folders, and version history, including two honest corrections about what the dashboard cannot yet do."
+icon: "film"
+---
+
+## Uploading
+
+<Warning>
+  The dashboard upload cap is **3 GB per file**. There is no duration limit, but there is
+  a hard size limit, and a file over it is rejected before it starts.
+</Warning>
+
+Accepted formats: MP4, MOV, M4V, AVI, WebM, OGV, 3GP, MKV. A file below 1080p is accepted
+with a soft quality warning rather than being blocked, since a lower-resolution source is
+sometimes a deliberate choice, not a mistake.
+
+## Portrait: the mobile version
+
+A video's landscape file and its portrait file are two separate uploads, not one
+auto-cropped from the other. Upload a 9:16 cut alongside the original and TrackPlay treats
+it as the mobile version of the same video.
+
+**Smart Orientation** is the toggle that puts this to use: once it is on, TrackPlay serves
+the portrait file to mobile viewers and the landscape file to everyone else, automatically.
+
+<Note>
+  Smart Orientation cannot be turned on with only one orientation uploaded. Both a
+  landscape asset and a portrait asset have to exist and finish encoding before the toggle
+  becomes available. Upload only a landscape file, and mobile viewers watch the landscape
+  file letterboxed, which is normal and not an error state.
+</Note>
+
+## Auto-publish
+
+There is no publish button for the video file itself. The moment every uploaded
+orientation finishes transcoding, the video goes live automatically, with its embed
+script and its poster image both published as soon as encoding completes.
+
+<Note>
+  This is separate from draft and deploy for **player settings**. Customization changes
+  (overlays, CTAs, branding) go through their own draft and deploy step. The video file
+  going live and a settings change going live are two different mechanisms; only the
+  first one is fully automatic with no toggle to turn it off.
+</Note>
+
+## Folders
+
+Organize videos into folders with unlimited nesting. The only structural rule is that a
+folder cannot be nested into its own descendant, which TrackPlay blocks outright rather
+than letting you create a loop.
+
+Deleting a folder does not delete its contents. Videos and subfolders inside it move up a
+level instead, so an accidental folder delete never takes videos down with it.
+
+Moving videos in bulk (drag-and-drop or a multi-select move) is capped at **500 videos per
+request**. A larger reorganization needs more than one move.
+
+## Search
+
+Search the library by title. Results scope to the current workspace, same as everything
+else here.
+
+## What tags cannot do yet
+
+<Warning>
+  Video tags exist in the public API and nowhere in the dashboard. There is no tag input,
+  no tag chip, and no tag filter anywhere in the video library UI today. If you tag
+  videos through the API, that tag will not show up, and will not be searchable or
+  filterable, inside the dashboard itself.
+</Warning>
+
+Set and read tags through the [Videos API](/api-reference/videos) if you need them now.
+Treat tags as an API-only feature until dashboard support for them ships.
+
+## Version history
+
+Every deploy of a video's **player settings** snapshots automatically. This versions the
+customization: overlays, CTAs, branding, player behavior. It does not version the video
+file itself; there is no way to roll the source media back to an older upload.
+
+The dashboard shows the 50 most recent versions. There is no cap on how many are stored
+behind that, only on how many are listed at once.
+
+### What "Diff" actually shows
+
+<Warning>
+  The **Diff** button does not compare two versions field by field. It pretty-prints the
+  full settings JSON for the one version you selected. Read it as "here is exactly what
+  this version's settings were," not as "here is what changed between two versions." If
+  you need to know what changed, you have to read the two snapshots side by side yourself.
+</Warning>
+
+### Restore
+
+Restoring a past version does not delete anything. It writes a **new** version, labeled
+"Restored from version #N," and makes that the live one. Your history keeps growing
+forward; nothing is ever erased by a restore.

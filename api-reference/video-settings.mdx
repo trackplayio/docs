@@ -1,0 +1,265 @@
+---
+title: "Video Settings API"
+description: "Stage a settings change, then publish it. The two calls look similar and behave very differently, so read this before you script either one."
+icon: "sliders"
+sidebarTitle: "Video Settings API"
+---
+
+A video's settings are around three dozen JSON option groups: `style_options`,
+`playback_options`, `autoplay_options`, `captions_options`, `chapters_options`,
+`quiz_options`, and so on, the same groups the dashboard editor writes to. This page
+covers the four calls that manage them through the API: save a draft, deploy, list past
+deploys, and restore one. Both need a token with `videos:write`.
+
+<Warning>
+  Two things about this API surprise every integration that has not read this page
+  first: the payload you send is a **partial** update, not a full replacement, and
+  **deploy is synchronous**. Read both sections below before you wire this up.
+</Warning>
+
+## The payload is partial, and merges by key
+
+Send only the option groups, or the fields inside them, that you want to change.
+Whatever you omit is left exactly as it already is, because the server takes your
+payload and merges it recursively over the current settings with PHP's
+`array_replace_recursive`, key by key, all the way down.
+
+```js
+// current style_options: { "main_color": "#0057ff", "background_color": "#111111" }
+
+// you send:
+{ "style_options": { "main_color": "#ff2d55" } }
+
+// result: { "main_color": "#ff2d55", "background_color": "#111111" }
+```
+
+`background_color` was never in your payload, so it survives untouched.
+
+<Warning>
+  This recursive merge works key by key, which is exactly what you want for an object
+  like `style_options`. It does **not** truncate a list. An option group that holds an
+  array, `chapters_options.chapters`, `cta_cards_options.cards`, works by numeric index:
+  sending three items over an existing five leaves indexes 3 and 4 in place from before,
+  it does not shrink the list to three. If you are changing a list-shaped option group,
+  send the complete list, not a partial one.
+</Warning>
+
+<Note>
+  Your payload is filtered to the option groups the video already exposes before anything
+  else happens. A top-level group outside that set is **dropped silently**: no error, no
+  `422`, and a `200` response that looks like it worked. `pitch_time_options` is the one
+  group that behaves this way today, so it cannot be set through this API at all.
+
+  Nested keys are not filtered. Only the top-level group name has to be one the video
+  already carries, which is why an option with no dashboard toggle can still be set here
+  as long as its group is a real one.
+</Note>
+
+Validation runs on the **merged result**, through the same rules the dashboard editor
+uses, not on your payload alone. Most fields are optional, but a few (`style_options.
+main_color`, `style_options.background_color`, `progress_options.background_color` and
+`progress_options.bar_color` among them) are hard-required in the schema. In practice
+this only bites if your existing settings somehow do not already satisfy them; a normal
+partial update to unrelated fields will not trip it.
+
+Any top-level key you send that is not a real option group is dropped silently rather
+than rejected: only the ~35 known columns are read out of your request body.
+
+## Save a draft
+
+<ParamField path="video" type="integer" required>
+  The video's numeric id.
+</ParamField>
+<ParamField body="..." type="object">
+  Any subset of the option-group columns. See [Get settings](/api-reference/videos#read-settings-embed-code-and-player-config)
+  for the full shape.
+</ParamField>
+
+```bash curl
+curl -X POST https://app.trackplay.io/api/v1/videos/512/draft \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "style_options": { "main_color": "#ff2d55" } }'
+```
+
+```json 200 OK
+{
+  "draft": { "style_options": { "main_color": "#ff2d55", "background_color": "#111111" }, "...": "..." },
+  "version": null
+}
+```
+
+A draft is stored, not published. It does not change what the live embed serves, it is
+not compiled, and it fires no webhook. `version` is always `null` here: a draft never
+gets a version id, only a deploy does.
+
+<Warning>
+  Saving a draft does **not** queue it to go live on the next deploy call. Deploy reads
+  from your **live** settings, not from the draft row. See the next section.
+</Warning>
+
+## Deploy
+
+<ParamField path="video" type="integer" required>
+  The video's numeric id.
+</ParamField>
+<ParamField body="..." type="object">
+  Any subset of the option-group columns, merged the same way as `/draft`, over the
+  video's current **live** settings.
+</ParamField>
+<ParamField body="_version_label" type="string">
+  An optional label stored on the version this call creates. Shows up in the deploys
+  list.
+</ParamField>
+
+```bash curl
+curl -X POST https://app.trackplay.io/api/v1/videos/512/deploy \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "style_options": { "main_color": "#ff2d55" }, "_version_label": "Rebrand to red" }'
+```
+
+```json 200 OK
+{
+  "video": { "id": 512, "style_options": { "main_color": "#ff2d55", "...": "..." }, "...": "..." },
+  "version_id": 118,
+  "embed_url": "https://app.trackplay.io/embed/9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34"
+}
+```
+
+<Warning>
+  **Deploy merges your payload over the live settings, not over your saved draft.** If
+  you called `/draft` earlier and now call `/deploy` with an empty or different body,
+  the draft's changes are not applied. To publish what you drafted, send the same
+  payload to `/deploy` that you sent to `/draft`. Either way, deploy deletes the
+  pending draft row afterward, whether or not it matched what you deployed.
+</Warning>
+
+Deploy does four things, in order, and they are why the call is slow:
+
+<Steps>
+  <Step title="Merge and validate">
+    Same partial-merge-and-validate as `/draft`, but against live settings.
+  </Step>
+  <Step title="Recompile the player bundle">
+    Synchronously. This calls out to build the bundle and push it to two CDNs. It is
+    not queued and there is no background job id to poll: the HTTP request itself does
+    not return until this finishes.
+  </Step>
+  <Step title="Snapshot a version">
+    Only after the compile and CDN push both succeed. This is what makes deploy safe:
+    if the bundle build or the CDN push fails, the call throws before any version is
+    snapshotted or marked live, and the previously live settings keep serving. You get
+    a `500` and nothing changed.
+  </Step>
+  <Step title="Fan out">
+    Busts the AI-segment settings cache and fires the `video.settings.deployed`
+    webhook, `{"video_id": <id>, "version_id": <id>}`.
+  </Step>
+</Steps>
+
+<Warning>
+  Because deploy compiles and pushes to a CDN synchronously, it is slow relative to
+  every other call on this API, and it is not built to be called in a tight loop. If
+  you are applying several changes, batch them into one `/deploy` call rather than
+  calling it once per field.
+</Warning>
+
+The response's `embed_url` is the public URL for the video's embed page on the version
+this call published.
+
+## List past deploys
+
+<ParamField path="video" type="integer" required>
+  The video's numeric id.
+</ParamField>
+
+```bash curl
+curl https://app.trackplay.io/api/v1/videos/512/deploys \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{
+  "current_page": 1,
+  "data": [
+    {
+      "id": 118,
+      "workspace_video_id": 512,
+      "created_by": null,
+      "label": "Rebrand to red",
+      "version_hash": "9c3a1e...",
+      "settings_snapshot": { "style_options": { "...": "..." }, "...": "..." },
+      "is_live": true,
+      "created_at": "2026-08-12T10:04:00Z",
+      "updated_at": "2026-08-12T10:04:00Z"
+    }
+  ],
+  "per_page": 20,
+  "total": 6
+}
+```
+
+<Note>
+  Every row carries its full `settings_snapshot`, the complete option-group object at
+  that point in time, not a diff. A workspace with a long deploy history will get a
+  large payload back; page through it with `?page=`. Only deploys and restores create a
+  version. Draft saves never appear here.
+</Note>
+
+## Restore a version
+
+<ParamField path="video" type="integer" required>
+  The video's numeric id.
+</ParamField>
+<ParamField path="version" type="integer" required>
+  A version id from the deploys list above.
+</ParamField>
+
+```bash curl
+curl -X POST https://app.trackplay.io/api/v1/videos/512/deploys/104/restore \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{
+  "video": { "id": 512, "style_options": { "main_color": "#0057ff" }, "...": "..." },
+  "restored_version_id": 104
+}
+```
+
+Restore is not a partial merge. It writes the chosen version's `settings_snapshot`
+back onto the video wholesale, replacing the live settings entirely, then recompiles
+synchronously (same throw-before-live-marking guarantee as deploy) and snapshots a new
+version labeled `Restored from version 104`. It does not fire a webhook.
+
+## Errors
+
+<AccordionGroup>
+  <Accordion title="401: INVALID_TOKEN">
+    The token is wrong, expired, or revoked.
+  </Accordion>
+  <Accordion title="403: INSUFFICIENT_SCOPE">
+    All four calls need `videos:write`.
+  </Accordion>
+  <Accordion title="404">
+    No video with that id (or, for restore, no version with that id on this video) in
+    your workspace. Laravel's default body: `{"message": "No query results for model
+    [App\\Models\\WorkspaceVideo] 512"}`.
+  </Accordion>
+  <Accordion title="422">
+    The merged settings failed validation. `{"message": "The given data was invalid.",
+    "errors": {"style_options.main_color": ["The style options.main color field is
+    required."]}}`. This can fire even on a small partial payload, since validation
+    runs on the full merged object.
+  </Accordion>
+  <Accordion title="429">
+    Rate limited. 60 writes per minute per token. Deploy's own compile time adds to
+    this, so a burst of deploys is slower to clear than a burst of any other write.
+  </Accordion>
+  <Accordion title="500">
+    Deploy or restore failed to compile or push to the CDN. No custom error code: this
+    is an uncaught server error. Nothing was published, the video is still serving its
+    previous live settings, and no version was created. Retry the call.
+  </Accordion>
+</AccordionGroup>

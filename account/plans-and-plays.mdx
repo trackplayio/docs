@@ -1,0 +1,154 @@
+---
+title: "Plans and plays"
+description: "The exact definition of a play, what each plan includes, and what happens at the edges: quota, overage, and a failed card."
+icon: "credit-card"
+---
+
+TrackPlay bills on plays. Before the plans and prices, here is the definition, in full,
+because a billing definition you cannot see is not a definition you can trust.
+
+## What counts as a play
+
+A play is **one session in which a viewer genuinely played a video**. Not a page load.
+Not a muted autoplay that started because the browser allowed it. One session, one video,
+one real watch.
+
+Precisely: a play is one distinct `(video, session)` pair that produced at least one of
+these events:
+
+- `video-play`
+- `video-unmute`
+- `video-resume`
+- `video-continue`
+- `video-restart`
+- `video-autoplay-sound` (autoplay that started **with** sound, unprompted)
+
+<Warning>
+  Plain **muted autoplay is not a play.** A video that silently starts because the browser
+  allowed it, with the viewer never engaging, is not counted or billed. On a 30-day sample
+  this was the difference between 12,500 muted autoplays and 958 with-sound autoplays: if
+  TrackPlay billed the muted ones, the bill would be mostly noise.
+</Warning>
+
+Bots never count as a play, on any plan, ever.
+
+### The session boundary
+
+A session ends after **30 minutes of inactivity**. Everything that happens inside one
+session is free: pausing and resuming, unmuting, restarting, watching the same video
+twice. None of it bills again, because it is browser-cached behavior inside a visit
+TrackPlay already counted.
+
+A viewer who genuinely leaves and comes back after the 30-minute gap opens a **new
+session**, and that is a new play. That is not double-billing. It is a second visit, and a
+second visit is real usage.
+
+<Note>
+  One session watching two different videos on the same page counts as **two plays**, not
+  one. The video is part of the identity of a play, so a page with two embeds bills for
+  both if the viewer engages with both.
+</Note>
+
+### Why this matters more than it sounds like it should
+
+Counting raw event rows instead of de-duplicated plays would have over-billed by roughly
+**1.97 times** on real traffic, because a single genuine watch can throw off several
+qualifying events (every pause-to-play toggle rewrites into a second `video-resume`, for
+instance). The de-duplication is what makes the play count on your dashboard the same
+number you are actually charged for, not an inflated cousin of it.
+
+## Plans
+
+<Warning>
+  Free trials and monthly prices below are billed in USD. Annual prices are paid
+  up front for the year.
+</Warning>
+
+| Plan | Monthly | Annual | Included plays / mo | Overage rate | Free trial |
+| --- | --- | --- | --- | --- | --- |
+| **Free** | $0 | N/A | 1,000 | Not available | N/A |
+| **Basic** | $29 | $290 (about 17% off) | 5,000 | $0.02 / play | 14 days |
+| **Pro** | $79 | $790 | 15,000 | $0.01 / play | 14 days |
+| **Scale** | $199 | $1,990 | 50,000 | $0.01 / play | 14 days |
+
+<Note>
+  Pro and Scale currently share the same $0.01 per-play overage rate. If you see older
+  marketing copy claiming Scale has a lower overage rate than Pro, that is not accurate
+  in current pricing. Check your plan's rate on the Billing screen before relying on it as
+  a differentiator.
+</Note>
+
+The Free plan cannot enable overage at all. Once its 1,000 included plays are used, videos
+stop serving until the period resets or you upgrade.
+
+## Overage is opt-in, twice
+
+Overage means TrackPlay keeps serving plays past your included quota and bills you per
+extra play instead of cutting your videos off. It never turns on by itself. Two separate
+conditions both have to be true:
+
+<Steps>
+  <Step title="Your plan has to allow it">
+    Basic, Pro, and Scale allow overage. Free does not, and there is no override.
+  </Step>
+  <Step title="You have to switch it on">
+    Even on a plan that allows it, overage stays off until you turn it on yourself in
+    Billing. A plan that supports overage does not enable it for you.
+  </Step>
+</Steps>
+
+## What happens at quota
+
+The two situations below look similar from the outside (a video stops responding) but
+have opposite causes and opposite timelines. Do not confuse them.
+
+<Warning>
+  **Quota exhaustion has no grace period.** The moment your included plays run out, and
+  overage is off, plays stop serving. There is no warning window here, only the two usage
+  emails described below sent before you hit the wall. The enforcement check is cached for
+  up to 5 minutes for performance, so cutoff can lag the exact quota number by at most
+  that cache window, but there is no multi-day cushion the way there is for a failed
+  payment.
+</Warning>
+
+TrackPlay emails the account owner at **80% and 100%** of the included quota for the
+current period, once each, so 100% is never a total surprise. Past that, with overage off,
+videos stop playing for new sessions until the next billing period starts or you upgrade
+or enable overage.
+
+With overage on, none of this applies: plays past quota keep serving and get billed at
+your plan's per-play rate.
+
+## What happens on a failed payment
+
+This is a different situation from quota exhaustion, and it is much less abrupt. A failed
+charge does not touch your videos immediately.
+
+<Steps>
+  <Step title="Day 0: payment fails">
+    Your plan moves to a past-due state and the first email goes out. Plays keep serving
+    normally.
+  </Step>
+  <Step title="Day 2: reminder">
+    A second email nudges you to update your payment method. Plays still serve.
+  </Step>
+  <Step title="Day 5: suspension warning">
+    A third email states plainly that plays pause in 2 days. Plays still serve.
+  </Step>
+  <Step title="Day 7: suspension">
+    If the card still has not been fixed, the plan is suspended and a fourth email
+    confirms it. This is the point where plays actually stop.
+  </Step>
+</Steps>
+
+Four emails go out before anything is cut off, and your videos keep playing for the full
+7-day window while they do. This is the opposite of quota exhaustion, which stops the
+moment the number is hit with no comparable window. If your plays suddenly stopped
+serving, check which situation you are in: an unpaid invoice gives you a week's notice,
+an exhausted quota does not.
+
+## Where to see your usage
+
+Your current play count against your included quota, plus your overage status, lives on
+the Billing screen under Settings. It reflects the same de-duplicated play count this page
+describes, the number you are billed on, not a raw event tally.

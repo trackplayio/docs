@@ -301,7 +301,7 @@
       "get": {
         "operationId": "getVideoAnalyticsSummary",
         "summary": "Read a video's summary",
-        "description": "The headline numbers for one video over a date range: plays, unique plays, completions, completion rate, average watch time, and bounces. This is the play-to-buyer story in one call.\n\nThe response carries `Cache-Control: private, max-age=60` and an `ETag`. Send the `ETag` back as `If-None-Match` and a repeat within the window returns `304 Not Modified` with no body.\n\nRequires a token with the `analytics:read` scope.\n\nServer: `https://app.trackplay.io/api/v1`",
+        "description": "The headline numbers for one video over a date range: plays, unique plays, completions, completion rate, average watch time, and bounces. This is the play-to-buyer story in one call.\n\nThe response carries `Cache-Control: private, max-age=60` and an `ETag`, and the summary is computed once and cached for 60 seconds. Conditional requests are not honoured yet: sending the `ETag` back as `If-None-Match` returns a full `200`, never a `304`.\n\nRequires a token with the `analytics:read` scope.\n\nServer: `https://app.trackplay.io/api/v1`",
         "tags": [
           "Analytics"
         ],
@@ -375,9 +375,6 @@
                 }
               }
             }
-          },
-          "304": {
-            "description": "Not modified. The `ETag` you sent as `If-None-Match` still matches, so no body is returned."
           },
           "401": {
             "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
@@ -491,11 +488,26 @@
                     "value": {
                       "video_id": 481,
                       "buckets": [
-                        { "bucket_pct": 0, "watch_pct": 1.0 },
-                        { "bucket_pct": 25, "watch_pct": 0.6413 },
-                        { "bucket_pct": 50, "watch_pct": 0.4192 },
-                        { "bucket_pct": 75, "watch_pct": 0.2517 },
-                        { "bucket_pct": 100, "watch_pct": 0.1366 }
+                        {
+                          "bucket_pct": 0,
+                          "watch_pct": 1.0
+                        },
+                        {
+                          "bucket_pct": 25,
+                          "watch_pct": 0.6413
+                        },
+                        {
+                          "bucket_pct": 50,
+                          "watch_pct": 0.4192
+                        },
+                        {
+                          "bucket_pct": 75,
+                          "watch_pct": 0.2517
+                        },
+                        {
+                          "bucket_pct": 100,
+                          "watch_pct": 0.1366
+                        }
                       ]
                     }
                   }
@@ -853,7 +865,10 @@
                 "events": {
                   "summary": "Export raw events for two videos as CSV",
                   "value": {
-                    "video_ids": [481, 482],
+                    "video_ids": [
+                      481,
+                      482
+                    ],
                     "from": "2026-06-17",
                     "to": "2026-07-17",
                     "format": "csv",
@@ -1025,6 +1040,3425 @@
           }
         }
       }
+    },
+    "/workspace": {
+      "get": {
+        "operationId": "getWorkspace",
+        "summary": "Read the workspace",
+        "description": "Returns the ID, name, and public code of the workspace the token belongs to. Useful as a lightweight check that a token is valid and to learn the workspace's code before calling endpoints that need it.\n\nRequires a token with the `videos:read` scope.",
+        "tags": [
+          "Videos"
+        ],
+        "responses": {
+          "200": {
+            "description": "The workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 600 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/videos": {
+      "get": {
+        "operationId": "listVideos",
+        "summary": "List videos",
+        "description": "Lists the videos in this workspace, paginated, with optional sorting.\n\nRequires a token with the `videos:read` scope.",
+        "tags": [
+          "Videos"
+        ],
+        "parameters": [
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "id",
+                "title",
+                "code",
+                "created_at",
+                "updated_at"
+              ]
+            },
+            "description": "Which column to sort by. Any other value is ignored and the list falls back to `id desc`."
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "default": "desc"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of videos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 600 requests per minute per token."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createVideo",
+        "summary": "Create a video",
+        "description": "Creates a new, empty video shell. The video has no playable media until you upload one with the resumable upload protocol or the single-shot upload endpoint.\n\nPass `copy_from` to clone every option-group setting (style, playback, autoplay, captions, chapters, CTA cards, and the rest) from an existing video in this workspace. Source media is never copied: the new video still needs its own upload.\n\nFires the `video.created` webhook.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Videos"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoCreateRequest"
+              },
+              "examples": {
+                "basic": {
+                  "value": {
+                    "title": "New VSL",
+                    "player_version": "v2"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The video was created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/videos/{video}": {
+      "get": {
+        "operationId": "getVideo",
+        "summary": "Get a video",
+        "description": "Reads one video by its numeric ID.\n\nRequires a token with the `videos:read` scope.",
+        "tags": [
+          "Videos"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The video.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 600 requests per minute per token."
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateVideo",
+        "summary": "Update a video",
+        "description": "Updates a video's title, folder, or tags. Every field is optional: send only what you want to change. This endpoint does not touch playback settings; use draft and deploy for those.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Videos"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated video.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteVideo",
+        "summary": "Delete a video",
+        "description": "Deletes a video and any pending settings draft on it. This does not delete the video's past deploy versions or its analytics history. Fires the `video.deleted` webhook.\n\nThis cannot be undone through the API. There is no restore-a-deleted-video endpoint.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Videos"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/videos/{video}/duplicate": {
+      "post": {
+        "operationId": "duplicateVideo",
+        "summary": "Duplicate a video",
+        "description": "Copies a video, including every option-group setting, under a new title (`<original title> (copy)`). The copy's HLS URLs and thumbnails are cleared: a duplicate needs its own upload, because media is never copied.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Videos"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The duplicate.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/videos/{video}/settings": {
+      "get": {
+        "operationId": "getVideoSettings",
+        "summary": "Read a video's settings",
+        "description": "Returns every option-group column on the video: style, playback, autoplay, captions, chapters, CTA cards, playlist, and the rest. This is the live, deployed settings, not a draft.\n\nRequires a token with the `videos:read` scope.",
+        "tags": [
+          "Videos"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The video's settings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSettingsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 600 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/videos/{video}/embed": {
+      "get": {
+        "operationId": "getVideoEmbed",
+        "summary": "Read a video's embed code",
+        "description": "Returns the ready-to-paste embed HTML for this video, along with its timed events (chapters, CTA cards, and similar) in playback order.\n\nRequires a token with the `videos:read` scope.",
+        "tags": [
+          "Videos"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The embed code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 600 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/videos/{video}/config": {
+      "get": {
+        "operationId": "getVideoConfig",
+        "summary": "Read a video's player config",
+        "description": "Returns the shape the embed loader itself reads to size the player before the first frame paints: the workspace and video codes, and each orientation's dimensions and aspect ratio. `landscape` or `portrait` is `null` until an asset has been uploaded for that orientation.\n\nRequires a token with the `videos:read` scope.",
+        "tags": [
+          "Videos"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The player config.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 600 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/videos/{video}/draft": {
+      "post": {
+        "operationId": "draftVideoSettings",
+        "summary": "Save a settings draft",
+        "description": "Saves a partial or full settings payload without publishing it. The payload is merged recursively over whatever is already drafted, or over the live settings if there is no draft yet, so you only need to send the option groups you are changing.\n\nThe merged payload is validated with the same rules the dashboard's Customize screen enforces, so an invalid value in any option group fails the whole request. Nothing is published: the player a viewer sees is unchanged until you call deploy.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Video settings"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The full merged draft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed on the merged settings payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/videos/{video}/deploy": {
+      "post": {
+        "operationId": "deployVideoSettings",
+        "summary": "Deploy settings",
+        "description": "Publishes a partial or full settings payload and recompiles the player bundle. The payload is merged recursively over the current live settings, validated, saved, and any pending draft is cleared.\n\nThe player is compiled and pushed to both CDNs before anything is marked live: if the compile or the CDN push fails, the call fails with a 500 and the previous version keeps serving, so a viewer never sees a half-published player. On success this busts the AI-segment settings cache, snapshots a new version you can restore later, and fires the `video.settings.deployed` webhook.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Video settings"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deployed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeployResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed on the merged settings payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          },
+          "500": {
+            "description": "The player failed to compile, or the compiled bundle failed to reach the CDN. Nothing was marked live. Retry the deploy."
+          }
+        }
+      }
+    },
+    "/videos/{video}/deploys": {
+      "get": {
+        "operationId": "listVideoDeploys",
+        "summary": "List past deploys",
+        "description": "Lists this video's deploy versions, newest first, 20 per page. Each entry is a full settings snapshot you can inspect or restore.\n\nRequires a token with the `videos:write` scope, because a version's `settings_snapshot` can carry the same sensitive fields (Stripe price IDs, pixel IDs) a write token is already trusted with.",
+        "tags": [
+          "Video settings"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of versions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploysListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/videos/{video}/deploys/{version}/restore": {
+      "post": {
+        "operationId": "restoreVideoDeploy",
+        "summary": "Restore a past deploy",
+        "description": "Re-applies a past version's settings snapshot as the video's live settings, recompiles the player, and snapshots the restore itself as a new version. Restoring is not destructive to history: the version you restored from, and every version before it, are still there afterward.\n\nLike deploy, the player is compiled and pushed to both CDNs before anything is marked live.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Video settings"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The version ID to restore, from `GET /videos/{video}/deploys`."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace, or no version with that ID exists on this video.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          },
+          "500": {
+            "description": "The player failed to compile, or the compiled bundle failed to reach the CDN. The video's settings were already overwritten with the restored snapshot at this point; retry the restore to reach a consistent compiled state."
+          }
+        }
+      }
+    },
+    "/videos/{video}/upload/init": {
+      "post": {
+        "operationId": "initVideoUpload",
+        "summary": "Start a resumable upload",
+        "description": "Starts a resumable upload session for one orientation of a video. Send the file in 20 MB chunks with `PATCH /uploads/{upload}`, then finish with `POST /uploads/{upload}/complete`. The session expires 24 hours after it is created; chunks sent after that return `404 UPLOAD_NOT_FOUND`.\n\nFor files under 100 MB, the single-shot upload endpoint is simpler and needs no session management.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Uploads"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadInitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The upload session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadInitResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. Check `size` is between 1 and 10,737,418,240 bytes, and `mime_type` is one of the supported video types.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/uploads/{upload}": {
+      "patch": {
+        "operationId": "uploadVideoChunk",
+        "summary": "Send an upload chunk",
+        "description": "Sends one chunk of raw bytes for a resumable upload session. Send the `Upload-Offset` header set to the number of bytes already sent (0 for the first chunk), and the chunk itself as the raw request body with `Content-Type: application/offset+octet-stream`.\n\nThis call is idempotent at the current offset: resending the offset you already sent returns the session's current offset unchanged, without writing the chunk twice. Sending an offset ahead of what the session has recorded means a chunk was lost in transit; the call fails with a 409 so you can resend from the session's real offset instead of leaving a gap in the assembled file.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Uploads"
+        ],
+        "parameters": [
+          {
+            "name": "upload",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The `upload_id` from `POST /videos/{video}/upload/init`."
+          },
+          {
+            "name": "Upload-Offset",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The number of bytes already sent for this upload, before this chunk."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/offset+octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The chunk was written, or this offset was already written and the chunk was not repeated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadChunkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`EMPTY_CHUNK`: the request body carried no bytes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`UPLOAD_NOT_FOUND`: no upload session with that ID, or it expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`OFFSET_MISMATCH`: the `Upload-Offset` header does not match the session's recorded offset. The response names the expected offset; resend from there.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "abortVideoUpload",
+        "summary": "Abort an upload",
+        "description": "Cancels a resumable upload session and deletes any chunks received so far. Returns `{\"deleted\": true}` even if the session had already expired or never existed: aborting a session that is not there is not an error.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Uploads"
+        ],
+        "parameters": [
+          {
+            "name": "upload",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The `upload_id` from `POST /videos/{video}/upload/init`."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aborted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/uploads/{upload}/complete": {
+      "post": {
+        "operationId": "completeVideoUpload",
+        "summary": "Finish a resumable upload",
+        "description": "Assembles every chunk received for this session in order and pushes the result to the video CDN. On success, the video's HLS URL and dimensions for that orientation are set and the session's temporary files are deleted. Fires the `video.uploaded` webhook.\n\nCalling this before any chunks were sent fails with a 400. A CDN failure leaves the video unchanged and returns a 500: retry the complete call, the assembled chunks are only cleaned up after a successful push.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Uploads"
+        ],
+        "parameters": [
+          {
+            "name": "upload",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The `upload_id` from `POST /videos/{video}/upload/init`."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Upload finished. The video now carries the uploaded asset for the requested orientation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`NO_CHUNKS`: no chunks were received for this session before calling complete.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`UPLOAD_NOT_FOUND`: no upload session with that ID, or it expired. `VIDEO_NOT_FOUND`: the video the session was started for no longer exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          },
+          "500": {
+            "description": "`CDN_ERROR`: the assembled file failed to reach the CDN. Retry the complete call.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/videos/{video}/upload": {
+      "post": {
+        "operationId": "uploadVideoSingleShot",
+        "summary": "Upload a video in one request",
+        "description": "Uploads a video file directly, for files up to 100 MB. Send `multipart/form-data` with the file in a `file` field. For larger files, use the resumable upload protocol (`POST /videos/{video}/upload/init` and following) instead: a single request that fails partway through a 100 MB body has to restart from zero, a resumable session does not.\n\nOn success, the video's HLS URL and dimensions for the requested orientation are set. Fires no webhook: `video.uploaded` only fires from the resumable protocol's complete step.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Uploads"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The video file. Up to 100 MB. Must be mp4, mov (quicktime/m4v), avi, or webm."
+                  },
+                  "orientation": {
+                    "type": "string",
+                    "enum": [
+                      "landscape",
+                      "portrait"
+                    ],
+                    "default": "landscape"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Uploaded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. `file` is required, at most 100 MB, and must be one of the supported video MIME types.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          },
+          "500": {
+            "description": "`CDN_ERROR`: the file failed to reach the CDN. Retry the upload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/videos/{video}/captions/{lang}": {
+      "put": {
+        "operationId": "putVideoCaptions",
+        "summary": "Add or replace a caption track",
+        "description": "Adds a caption track for the given language, or replaces the existing track for that language if one is already saved. This only ever touches the one language in the path: every other track on the video is left alone. Recompiles the player so the new track is live immediately.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Captions and chapters"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          },
+          {
+            "name": "lang",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The language code for this track, e.g. `en` or `es`. Not validated against a fixed list: whatever you send is what viewers see as the track's key."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptionsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The video's full caption track list, including the track you wrote.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/videos/{video}/chapters": {
+      "put": {
+        "operationId": "putVideoChapters",
+        "summary": "Replace a video's chapters",
+        "description": "Replaces the video's entire chapter list. This is a full replace, not a merge: send every chapter you want to keep, including ones already saved, or they are removed. An empty `chapters` array turns chapters off. Recompiles the player.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Captions and chapters"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChaptersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The video's chapters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChaptersResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/videos/{video}/ai-segments": {
+      "post": {
+        "operationId": "putVideoAiSegments",
+        "summary": "Replace a video's AI segments",
+        "description": "Replaces the video's entire AI-segment list: the labeled time ranges used for segment-based navigation and highlights. This is a full replace, not a merge. Busts the AI-segment settings cache on the events edge so the new segments are visible on the next load, without a full deploy.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Captions and chapters"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiSegmentsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The video's AI segments.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiSegmentsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. Check every segment's `end_s` is greater than its `start_s`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/videos/{video}/cta-cards": {
+      "post": {
+        "operationId": "putVideoCtaCards",
+        "summary": "Replace a video's CTA cards",
+        "description": "Replaces the video's entire CTA card list: the timed, clickable cards that appear over the player. This is a full replace, not a merge: send every card you want to keep. An empty `cards` array turns CTA cards off. Recompiles the player.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Captions and chapters"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CtaCardsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The video's CTA cards.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CtaCardsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/playlists": {
+      "get": {
+        "operationId": "listPlaylists",
+        "summary": "List playlists",
+        "description": "Lists every video in this workspace that has a playlist or course enabled, paginated 50 per page. A playlist is not a separate resource: it is settings stored on the video that anchors it, so each entry here is that anchor video, described from the playlist's point of view.\n\nRequires a token with the `videos:read` scope.",
+        "tags": [
+          "Playlists"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of playlists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 600 requests per minute per token."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPlaylist",
+        "summary": "Enable a playlist on a video",
+        "description": "Turns an existing video into a playlist or course by attaching playlist settings to it. There is no separate playlist resource to create: `video_id` names the video that becomes the playlist's anchor, and the anchor is what every other playlist endpoint addresses by its `playlist` path parameter.\n\nYou can seed the playlist's items in the same call with `items`, or add them one at a time afterward with `POST /playlists/{playlist}/videos`.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Playlists"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaylistCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The playlist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistShowResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/playlists/{playlist}": {
+      "get": {
+        "operationId": "getPlaylist",
+        "summary": "Get a playlist",
+        "description": "Reads one playlist by the numeric ID of the video it lives on.\n\nRequires a token with the `videos:read` scope.",
+        "tags": [
+          "Playlists"
+        ],
+        "parameters": [
+          {
+            "name": "playlist",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The numeric ID of the video the playlist lives on. A playlist has no ID of its own: it is settings stored on a video row, so this is that video's `id`, the same value you would pass to `GET /videos/{video}`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The playlist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistShowResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 600 requests per minute per token."
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updatePlaylist",
+        "summary": "Update a playlist's settings",
+        "description": "Updates a playlist's playback mode, navigation, or chrome settings. Every field is optional: send only what you want to change. This does not touch the playlist's items; use the item endpoints for that.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Playlists"
+        ],
+        "parameters": [
+          {
+            "name": "playlist",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The numeric ID of the video the playlist lives on. A playlist has no ID of its own: it is settings stored on a video row, so this is that video's `id`, the same value you would pass to `GET /videos/{video}`."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaylistUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated playlist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistShowResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deletePlaylist",
+        "summary": "Disable a playlist",
+        "description": "Turns playlist mode off for this video. This is a soft disable: the anchor video and its items are kept, only `enabled` flips to false, so calling `POST /playlists` again with the same `video_id` picks up where you left off.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Playlists"
+        ],
+        "parameters": [
+          {
+            "name": "playlist",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The numeric ID of the video the playlist lives on. A playlist has no ID of its own: it is settings stored on a video row, so this is that video's `id`, the same value you would pass to `GET /videos/{video}`."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Disabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/playlists/{playlist}/videos": {
+      "get": {
+        "operationId": "listPlaylistVideos",
+        "summary": "List a playlist's items",
+        "description": "Lists every item in a playlist, in the order they play.\n\nRequires a token with the `videos:read` scope.",
+        "tags": [
+          "Playlists"
+        ],
+        "parameters": [
+          {
+            "name": "playlist",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The numeric ID of the video the playlist lives on. A playlist has no ID of its own: it is settings stored on a video row, so this is that video's `id`, the same value you would pass to `GET /videos/{video}`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The playlist's items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistItemsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 600 requests per minute per token."
+          }
+        }
+      },
+      "post": {
+        "operationId": "addPlaylistVideo",
+        "summary": "Add an item to a playlist",
+        "description": "Appends a video to the end of a playlist by its `video_code`. Adding the same `video_code` twice appends it twice: this endpoint does not deduplicate.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Playlists"
+        ],
+        "parameters": [
+          {
+            "name": "playlist",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The numeric ID of the video the playlist lives on. A playlist has no ID of its own: it is settings stored on a video row, so this is that video's `id`, the same value you would pass to `GET /videos/{video}`."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaylistItemCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The playlist's full item list, including the item you added.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistItemsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/playlists/{playlist}/videos/{video}": {
+      "patch": {
+        "operationId": "updatePlaylistVideo",
+        "summary": "Update a playlist item",
+        "description": "Updates the title, lesson label, duration, or thumbnail recorded for one item in a playlist. Every field is optional: send only what you want to change.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Playlists"
+        ],
+        "parameters": [
+          {
+            "name": "playlist",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The numeric ID of the video the playlist lives on. A playlist has no ID of its own: it is settings stored on a video row, so this is that video's `id`, the same value you would pass to `GET /videos/{video}`."
+          },
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Despite the parameter name, this is the item's `video_code`, not a numeric ID. Playlist items are addressed by video code, because a playlist item has no ID of its own either."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaylistItemUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The playlist's full item list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistItemsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`: no item with that video code exists in this playlist. This 404 can also mean the video hosting the playlist itself was not found, in which case the body carries Laravel's default not-found shape instead.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removePlaylistVideo",
+        "summary": "Remove a playlist item",
+        "description": "Removes one item from a playlist by its `video_code`. Removing a code that is not in the playlist is not an error: the item list comes back unchanged.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Playlists"
+        ],
+        "parameters": [
+          {
+            "name": "playlist",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The numeric ID of the video the playlist lives on. A playlist has no ID of its own: it is settings stored on a video row, so this is that video's `id`, the same value you would pass to `GET /videos/{video}`."
+          },
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Despite the parameter name, this is the item's `video_code`, not a numeric ID. Playlist items are addressed by video code, because a playlist item has no ID of its own either."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The playlist's remaining items.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistItemsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/webhooks": {
+      "get": {
+        "operationId": "listWebhooks",
+        "summary": "List webhook subscriptions",
+        "description": "Lists every webhook subscription in this workspace, along with the full list of event names you can subscribe to. `secret` is never included: see the note on the webhook object.\n\nRequires a token with the `webhooks:write` scope. There is no read-only webhooks scope: listing subscriptions requires the same scope that manages them.",
+        "tags": [
+          "Webhooks"
+        ],
+        "responses": {
+          "200": {
+            "description": "The subscriptions and the supported event catalogue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `webhooks:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWebhook",
+        "summary": "Create a webhook subscription",
+        "description": "Subscribes a URL to one or more lifecycle events. Every delivery is a signed POST carrying `X-Trackplay-Event`, `X-Trackplay-Signature` (an HMAC-SHA256 of the payload using the subscription's secret), and `X-Trackplay-Timestamp`.\n\n`secret` is never returned by the API, not even in the response to this call: the model hides it from every JSON response, always. If you omit it, one is generated for you, but there is then no way to retrieve it afterward, so you cannot verify a signature against it. Always send your own `secret` if you plan to verify delivery signatures.\n\nRequires a token with the `webhooks:write` scope.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The subscription. `secret` is not included, even if you sent one yourself: keep your own copy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `webhooks:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. Check every entry in `events` is a supported event name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/webhooks/{webhook}": {
+      "delete": {
+        "operationId": "deleteWebhook",
+        "summary": "Delete a webhook subscription",
+        "description": "Deletes a webhook subscription. No more deliveries are sent to it afterward. This cannot be undone: create a new subscription if you need the URL wired up again.\n\nRequires a token with the `webhooks:write` scope.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "webhook",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The subscription's numeric ID."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `webhooks:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No subscription with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/webhooks/{webhook}/test": {
+      "post": {
+        "operationId": "testWebhook",
+        "summary": "Send a test delivery",
+        "description": "Sends a synthetic `webhook.test` delivery to the subscription's URL right now, signed the same way a real delivery is. Use it to confirm your endpoint is reachable and your signature verification works before relying on the real event traffic.\n\nA non-2xx response from your endpoint still counts as delivered: check `status_code` on the 200 response. The call only fails with a 502 when the delivery could not be sent at all, for example a DNS failure or a connection timeout.\n\nRequires a token with the `webhooks:write` scope.",
+        "tags": [
+          "Webhooks"
+        ],
+        "parameters": [
+          {
+            "name": "webhook",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The subscription's numeric ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The delivery was sent. Check `status_code` to see how your endpoint responded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookTestSuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `webhooks:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No subscription with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          },
+          "502": {
+            "description": "The test delivery could not be sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookTestFailureResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/zapier/me": {
+      "get": {
+        "operationId": "zapierMe",
+        "summary": "Zapier connection test",
+        "description": "Returns the workspace a token belongs to. Zapier calls this when a user connects their TrackPlay account, to label the connection in their Zapier dashboard. Not meant to be called outside a Zapier integration, though nothing stops you.\n\nRequires a token with the `webhooks:write` scope, the same one used as the Zapier connection's API key field.",
+        "tags": [
+          "Zapier"
+        ],
+        "responses": {
+          "200": {
+            "description": "The connected workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZapierMeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `webhooks:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/zapier/triggers": {
+      "get": {
+        "operationId": "zapierTriggers",
+        "summary": "List Zapier triggers",
+        "description": "Lists the six Zap triggers available: their keys, the lifecycle event each one maps to, and a label and description for Zapier's UI.\n\nRequires a token with the `webhooks:write` scope.",
+        "tags": [
+          "Zapier"
+        ],
+        "responses": {
+          "200": {
+            "description": "The trigger catalogue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZapierTriggersResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `webhooks:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/zapier/triggers/{event}/sample": {
+      "get": {
+        "operationId": "zapierTriggerSample",
+        "summary": "Get a sample trigger payload",
+        "description": "Returns one representative payload for a trigger, wrapped in the same envelope a real signed delivery uses. Zapier uses this to build its field-mapping UI, and as a fallback so a user can set up a Zap's action before any real event has fired.\n\nRequires a token with the `webhooks:write` scope.",
+        "tags": [
+          "Zapier"
+        ],
+        "parameters": [
+          {
+            "name": "event",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "new_lead",
+                "new_conversion",
+                "play_milestone",
+                "split_test_winner",
+                "cta_clicked",
+                "video_viewed"
+              ]
+            },
+            "description": "A trigger key from `GET /zapier/triggers`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The sample payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZapierSampleResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `webhooks:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`unknown_trigger`: `event` is not one of the six trigger keys.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZapierUnknownTriggerError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/zapier/subscribe": {
+      "post": {
+        "operationId": "zapierSubscribe",
+        "summary": "Subscribe a Zap to a trigger",
+        "description": "Creates a REST-hook subscription: under the hood this is a normal, signed webhook subscription scoped to one trigger's event, with its URL pointed at the Zap's hook. Zapier calls this automatically when a user turns a Zap on; you would only call it directly if you were building your own Zapier-style polling integration against the same trigger catalogue.\n\nRequires a token with the `webhooks:write` scope.",
+        "tags": [
+          "Zapier"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZapierSubscribeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Subscribed. Keep `id`: you need it to unsubscribe.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZapierSubscribeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `webhooks:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. `event` must be one of the six trigger keys.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/zapier/subscribe/{id}": {
+      "delete": {
+        "operationId": "zapierUnsubscribe",
+        "summary": "Unsubscribe a Zap from a trigger",
+        "description": "Deletes a REST-hook subscription. Zapier calls this automatically when a user turns a Zap off. Returns `{\"deleted\": true}` even if the ID does not exist or belongs to another workspace: unsubscribing from a subscription that is not there is not an error.\n\nRequires a token with the `webhooks:write` scope.",
+        "tags": [
+          "Zapier"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The `id` returned by `POST /zapier/subscribe`."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Retry-safe key. The first response for a given key is cached for 24 hours and replayed on a repeat, with `Idempotency-Replayed: true` set."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unsubscribed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `webhooks:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/v1/identify": {
+      "post": {
+        "operationId": "identify",
+        "summary": "Identify a viewer",
+        "description": "Resolves or mints a viewer profile from identity signals claimed by the page: a raw or pre-hashed email or phone, your own customer ID, or a session or device ID. No token is required or checked; the endpoint is public, CORS-enabled, and rate-limited per IP instead.\n\nBecause the caller is unauthenticated, a page-claimed identity is written at the lowest rung of TrackPlay's confidence ladder. A verified lead-form submission or a server-to-server event carrying the same email outranks it and wins on conflict.\n\nSend a raw `email` together with `video_code` and TrackPlay also tees a lead into the workspace's lead list for that video, in addition to writing the identity graph edge. Pre-hashed email alone does not: a hash cannot populate a human-readable lead record.\n\nServer: `https://e.trackplay.io`",
+        "tags": [
+          "Identity"
+        ],
+        "servers": [
+          {
+            "url": "https://e.trackplay.io"
+          }
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentifyRequest"
+              },
+              "examples": {
+                "email": {
+                  "summary": "Identify by raw email, tied to a video",
+                  "value": {
+                    "workspace_code": "WS123",
+                    "video_code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34",
+                    "session_code": "3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22",
+                    "email": "jane@example.com"
+                  }
+                },
+                "prehashed": {
+                  "summary": "Identify with a client-side hash instead of a raw email",
+                  "value": {
+                    "workspace_code": "WS123",
+                    "email_sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resolved or minted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentifyResponse"
+                },
+                "examples": {
+                  "resolved": {
+                    "value": {
+                      "ok": true,
+                      "profile_id": "prof_9f2c1a7e4d3b4a11"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`INVALID_PAYLOAD`: a field failed validation, or the body carried a field outside the schema. `IDENTITY_REQUIRED`: none of `email`, `email_sha256`, `email_md5`, `phone`, `phone_sha256`, `phone_md5`, `external_id`, `session_code`, `device_id`, or `device_global_id` were present. A call naming no identity signal cannot be resolved to anyone.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 120 requests per minute per IP by default.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                },
+                "examples": {
+                  "limited": {
+                    "value": {
+                      "error": "Too many requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "`IDENTITY_UNAVAILABLE`: the identity store is temporarily unreachable. This is never a rejection of your payload. Retry shortly.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/conversion": {
+      "post": {
+        "operationId": "browserConversion",
+        "summary": "Record a browser-side conversion (fallback)",
+        "description": "Reports a sale from the browser, for a cart integration that cannot post server-to-server. No token is required or checked; the endpoint is public, CORS-enabled, and rate-limited per IP instead.\n\nThis is a fallback, not a replacement for a real integration postback. Every row it writes is stamped unverified: it is excluded from revenue, EPC, RPV, ROAS, and every other aggregate that only counts server-confirmed sales, and it never fires ad-platform pixels or CRM webhooks. If the same order later arrives through the integration's real postback, the two collapse into one row and the verified postback always wins, regardless of which arrived first.\n\nThe integration named in `integration` must have the browser conversion fallback turned on for this workspace, or the call is rejected. Turn it on in TrackPlay under that integration's settings.\n\nServer: `https://e.trackplay.io`",
+        "tags": [
+          "Conversions"
+        ],
+        "servers": [
+          {
+            "url": "https://e.trackplay.io"
+          }
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrowserConversionRequest"
+              },
+              "examples": {
+                "sale": {
+                  "summary": "A sale from a thank-you page",
+                  "value": {
+                    "workspace_code": "WS123",
+                    "integration": "clickbank",
+                    "order_id": "ORDER-9001",
+                    "value": 97.0,
+                    "currency": "USD",
+                    "session_id": "3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22",
+                    "customer_email": "buyer@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recorded as an unverified, browser-sourced conversion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserConversionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`INVALID_PAYLOAD`: a field failed validation, or the body carried a field outside the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`FALLBACK_DISABLED`: the browser conversion fallback is not turned on for this integration in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`INTEGRATION_NOT_FOUND`: no integration named `integration` is configured for this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per IP by default.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                },
+                "examples": {
+                  "limited": {
+                    "value": {
+                      "error": "Too many requests"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "`WRITE_FAILED`: the conversion could not be written. Retry the call: `order_id` keeps the retry from double-counting the sale.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "`UNAVAILABLE`: the integration lookup is temporarily unreachable. This is never a rejection of your payload. Retry shortly.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1032,7 +4466,7 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "A scoped token minted in **Settings → API tokens**. Send it as `Authorization: Bearer tplt_…` or `X-API-Key: tplt_…`."
+        "description": "A scoped token minted in **Settings \u2192 API tokens**. Send it as `Authorization: Bearer tplt_\u2026` or `X-API-Key: tplt_\u2026`."
       }
     },
     "schemas": {
@@ -1523,7 +4957,1707 @@
             "description": "The link to the finished file. `null` until `status` is `ready`."
           }
         }
+      },
+      "LaravelNotFoundError": {
+        "type": "object",
+        "description": "The default not-found body Laravel returns when a route model lookup fails (`findOrFail`). It carries no stable error code, unlike the app's own `{\"error\": {\"code\": ...}}` shape used on hand-written error paths in this API.",
+        "properties": {
+          "message": {
+            "type": "string",
+            "examples": [
+              "No query results for model [App\\\\Models\\\\WorkspaceVideo] 481"
+            ]
+          }
+        }
+      },
+      "ValidationError": {
+        "type": "object",
+        "description": "Laravel's default validation-failure body. `errors` maps each invalid field to its list of messages.",
+        "properties": {
+          "message": {
+            "type": "string",
+            "examples": [
+              "The given data was invalid."
+            ]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "DeletedResponse": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "examples": [
+              true
+            ]
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "description": "Laravel's standard paginator envelope.",
+        "properties": {
+          "current_page": {
+            "type": "integer"
+          },
+          "first_page_url": {
+            "type": "string"
+          },
+          "from": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_page": {
+            "type": "integer"
+          },
+          "last_page_url": {
+            "type": "string"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "next_page_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "per_page": {
+            "type": "integer"
+          },
+          "prev_page_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "to": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "WorkspaceResponse": {
+        "type": "object",
+        "properties": {
+          "workspace": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "Video": {
+        "type": "object",
+        "description": "A video and its settings. A video carries around thirty option-group columns (style, playback, autoplay, captions, chapters, CTA cards, playlist, and more) that are not itemized here. Read `GET /videos/{video}/settings` for the full set, or the dedicated endpoint for the group you care about (captions, chapters, AI segments, CTA cards).",
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The video's numeric ID."
+          },
+          "code": {
+            "type": "string",
+            "description": "The video's public code, used in `video_code` fields across the API and in conversions and events."
+          },
+          "title": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "integer"
+          },
+          "folder_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "player_version": {
+            "type": "string",
+            "examples": [
+              "v2"
+            ]
+          },
+          "landscape_hls": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The landscape HLS manifest URL, once an upload has completed for that orientation."
+          },
+          "portrait_hls": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "VideoSummary": {
+        "type": "object",
+        "description": "The reduced video shape returned by the list endpoint.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "VideoEnvelope": {
+        "type": "object",
+        "properties": {
+          "video": {
+            "$ref": "#/components/schemas/Video"
+          }
+        }
+      },
+      "VideoListResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PaginationMeta"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/VideoSummary"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "VideoCreateRequest": {
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "The video's title. Required."
+          },
+          "folder_id": {
+            "type": "integer",
+            "description": "Places the video in an existing folder. Optional."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "description": "Free-form tags for organizing videos in the dashboard."
+          },
+          "player_version": {
+            "type": "string",
+            "enum": [
+              "v1",
+              "v2",
+              "1",
+              "2"
+            ],
+            "description": "Which player build the video uses. Defaults to the workspace's default new-video version."
+          },
+          "copy_from": {
+            "type": "integer",
+            "description": "Copy every option-group column and the player version from another video in this workspace. The new video still needs its own upload: source media is never copied."
+          }
+        }
+      },
+      "VideoUpdateRequest": {
+        "type": "object",
+        "description": "Every field is optional. Send only what you want to change.",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "folder_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        }
+      },
+      "VideoSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Every option-group column on the video, keyed by group name (`style_options`, `playback_options`, `captions_options`, and so on)."
+          }
+        }
+      },
+      "EmbedResponse": {
+        "type": "object",
+        "properties": {
+          "html": {
+            "type": "string",
+            "description": "The ready-to-paste embed snippet for this video."
+          },
+          "timed_events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "The video's timed events (chapters, CTA cards, and similar), in playback order."
+          }
+        }
+      },
+      "ConfigResponse": {
+        "type": "object",
+        "description": "The shape the embed loader itself reads to size the player before the first frame paints.",
+        "properties": {
+          "config": {
+            "type": "object",
+            "properties": {
+              "workspace_code": {
+                "type": "string"
+              },
+              "video_code": {
+                "type": "string"
+              },
+              "landscape": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "w": {
+                    "type": "integer"
+                  },
+                  "h": {
+                    "type": "integer"
+                  },
+                  "padding": {
+                    "type": "string",
+                    "description": "The aspect-ratio box padding, as a percent string."
+                  },
+                  "aspectRatio": {
+                    "type": "string"
+                  }
+                },
+                "description": "`null` until a landscape asset has been uploaded."
+              },
+              "portrait": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "w": {
+                    "type": "integer"
+                  },
+                  "h": {
+                    "type": "integer"
+                  },
+                  "padding": {
+                    "type": "string"
+                  },
+                  "aspectRatio": {
+                    "type": "string"
+                  }
+                },
+                "description": "`null` until a portrait asset has been uploaded."
+              }
+            }
+          },
+          "timed_events_options": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "SettingsPayload": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "A partial or full settings payload, keyed by option-group column name, for example `style_options`, `playback_options`, `autoplay_options`, `progress_options`, `actions_options`, `pixels_options`, `continue_watching_options`, `turbo_options`, `timed_events_options`, `captions_options`, `chapters_options`, `cta_cards_options`, `playlist_options`, `engagement_options`, `lead_form_options`, `watch_gate_options`, `cross_device_resume_options`, `notes_options`, or `quiz_options`. Send only the groups you want to change. Each group has its own validation rules, the same ones the dashboard's Customize screen enforces, so a malformed value inside any group fails the whole request with a 422."
+      },
+      "DraftResponse": {
+        "type": "object",
+        "properties": {
+          "draft": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "The full merged draft: the new payload merged recursively over whatever was already drafted or live."
+          },
+          "version": {
+            "type": "null",
+            "description": "Always `null`. A draft is not a version. A version is only created on deploy."
+          }
+        }
+      },
+      "DeployResponse": {
+        "type": "object",
+        "properties": {
+          "video": {
+            "$ref": "#/components/schemas/Video"
+          },
+          "version_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The ID of the version snapshot this deploy created. Pass it to `GET /videos/{video}/deploys` or restore it later."
+          },
+          "embed_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The video's embed page URL."
+          }
+        }
+      },
+      "VersionSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "workspace_video_id": {
+            "type": "integer"
+          },
+          "created_by": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The dashboard user who triggered the deploy, if any. Deploys made through the API with no signed-in user are `null`."
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "settings_snapshot": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "The full settings payload as it was at this version."
+          },
+          "is_live": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeploysListResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PaginationMeta"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/VersionSummary"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "RestoreResponse": {
+        "type": "object",
+        "properties": {
+          "video": {
+            "$ref": "#/components/schemas/Video"
+          },
+          "restored_version_id": {
+            "type": "integer"
+          }
+        }
+      },
+      "UploadInitRequest": {
+        "type": "object",
+        "required": [
+          "filename",
+          "size",
+          "mime_type"
+        ],
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10737418240,
+            "description": "The file size in bytes. Capped at 10 GB (10,737,418,240 bytes)."
+          },
+          "mime_type": {
+            "type": "string",
+            "enum": [
+              "video/mp4",
+              "video/quicktime",
+              "video/x-m4v",
+              "video/x-msvideo",
+              "video/webm",
+              "video/ogg",
+              "video/3gpp",
+              "video/x-matroska"
+            ]
+          },
+          "orientation": {
+            "type": "string",
+            "enum": [
+              "landscape",
+              "portrait"
+            ],
+            "default": "landscape",
+            "description": "Which of the video's two orientation slots this upload fills."
+          }
+        }
+      },
+      "UploadInitResponse": {
+        "type": "object",
+        "properties": {
+          "upload_id": {
+            "type": "string",
+            "examples": [
+              "tpup_9f2c1a7e4d3b4a11..."
+            ]
+          },
+          "chunk_size": {
+            "type": "integer",
+            "description": "The byte size you should send per `PATCH` chunk (20,971,520 bytes, fixed).",
+            "examples": [
+              20971520
+            ]
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The upload session dies after this time. Chunks sent afterward return `404 UPLOAD_NOT_FOUND`."
+          }
+        }
+      },
+      "UploadChunkResponse": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "description": "The total bytes received so far. Send your next chunk's `Upload-Offset` header as this value."
+          }
+        }
+      },
+      "CaptionsRequest": {
+        "type": "object",
+        "required": [
+          "label",
+          "src"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "The display label shown in the player's caption menu, e.g. `English`."
+          },
+          "src": {
+            "type": "string",
+            "maxLength": 8192,
+            "description": "Either a URL to a WebVTT file, or raw WebVTT text."
+          },
+          "default": {
+            "type": "boolean",
+            "description": "Selects this track by default when the player loads. Defaults to false."
+          }
+        }
+      },
+      "CaptionTrack": {
+        "type": "object",
+        "properties": {
+          "lang": {
+            "type": "string",
+            "description": "The language code from the path, e.g. `en`."
+          },
+          "label": {
+            "type": "string"
+          },
+          "src": {
+            "type": "string"
+          },
+          "default": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CaptionsResponse": {
+        "type": "object",
+        "properties": {
+          "captions": {
+            "type": "object",
+            "properties": {
+              "tracks": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CaptionTrack"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ChapterItem": {
+        "type": "object",
+        "required": [
+          "time_seconds",
+          "title"
+        ],
+        "properties": {
+          "time_seconds": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Where the chapter starts, in seconds from the start of the video."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        }
+      },
+      "ChaptersRequest": {
+        "type": "object",
+        "required": [
+          "chapters"
+        ],
+        "properties": {
+          "chapters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChapterItem"
+            },
+            "description": "The complete chapter list. This is a full replace, not a merge: send every chapter you want to keep, including ones already saved. An empty array removes all chapters."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Turns chapters on or off in the player. Defaults to true when `chapters` is non-empty, false otherwise."
+          }
+        }
+      },
+      "ChaptersResponse": {
+        "type": "object",
+        "properties": {
+          "chapters_options": {
+            "type": "object",
+            "properties": {
+              "chapters": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ChapterItem"
+                }
+              },
+              "enabled": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "AiSegmentItem": {
+        "type": "object",
+        "required": [
+          "start_s",
+          "end_s",
+          "label"
+        ],
+        "properties": {
+          "start_s": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Segment start, in seconds."
+          },
+          "end_s": {
+            "type": "number",
+            "description": "Segment end, in seconds. Must be greater than `start_s`."
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence or relevance score, if you have one."
+          }
+        }
+      },
+      "AiSegmentsRequest": {
+        "type": "object",
+        "required": [
+          "segments"
+        ],
+        "properties": {
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiSegmentItem"
+            },
+            "description": "The complete segment list. This is a full replace: send every segment you want to keep."
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "A label for whatever produced these segments. Defaults to `custom`."
+          }
+        }
+      },
+      "AiSegmentsResponse": {
+        "type": "object",
+        "properties": {
+          "ai_segments": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "segments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AiSegmentItem"
+                }
+              },
+              "model": {
+                "type": "string"
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "CtaCardItem": {
+        "type": "object",
+        "required": [
+          "time"
+        ],
+        "properties": {
+          "time": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "When the card appears, in seconds from the start of the video."
+          },
+          "duration_s": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 120,
+            "description": "How long the card stays on screen, in seconds."
+          },
+          "headline": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "button_text": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048,
+            "description": "Where the button sends the viewer."
+          },
+          "button_color": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "stripe_price_id": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Attaches a Stripe price to the card's button for an in-player checkout."
+          }
+        }
+      },
+      "CtaCardsRequest": {
+        "type": "object",
+        "required": [
+          "cards"
+        ],
+        "properties": {
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CtaCardItem"
+            },
+            "description": "The complete card list. This is a full replace: send every card you want to keep."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Turns CTA cards on or off in the player. Defaults to true when `cards` is non-empty, false otherwise."
+          }
+        }
+      },
+      "CtaCardsResponse": {
+        "type": "object",
+        "properties": {
+          "cta_cards_options": {
+            "type": "object",
+            "properties": {
+              "cards": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CtaCardItem"
+                }
+              },
+              "enabled": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "PlaylistObject": {
+        "type": "object",
+        "properties": {
+          "video_id": {
+            "type": "integer",
+            "description": "The numeric ID of the video the playlist lives on. A playlist has no ID of its own."
+          },
+          "video_code": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "description": "The underlying video's title."
+          },
+          "playback_mode": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "course"
+            ]
+          },
+          "playlist_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "item_count": {
+            "type": "integer"
+          },
+          "auto_advance": {
+            "type": "boolean"
+          },
+          "loop": {
+            "type": "boolean"
+          },
+          "lesson_navigation": {
+            "type": "string",
+            "enum": [
+              "sidebar",
+              "next-button",
+              "both",
+              "none"
+            ]
+          }
+        }
+      },
+      "PlaylistListResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PaginationMeta"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PlaylistObject"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PlaylistShowResponse": {
+        "type": "object",
+        "properties": {
+          "playlist": {
+            "$ref": "#/components/schemas/PlaylistObject"
+          }
+        }
+      },
+      "PlaylistCreateRequest": {
+        "type": "object",
+        "required": [
+          "video_id"
+        ],
+        "properties": {
+          "video_id": {
+            "type": "integer",
+            "description": "The video that becomes the playlist's primary video. Required. Playlists have no resource of their own: enabling one turns this video into the playlist's anchor."
+          },
+          "playback_mode": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "course"
+            ],
+            "description": "Defaults to `linear`."
+          },
+          "playlist_code": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "video_code": {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              }
+            },
+            "description": "Seed the playlist with items in one call, instead of adding them one at a time with `POST /playlists/{playlist}/videos`."
+          },
+          "auto_advance": {
+            "type": "boolean",
+            "description": "Defaults to true."
+          },
+          "loop": {
+            "type": "boolean",
+            "description": "Defaults to false."
+          },
+          "playlist_chrome": {
+            "type": "string",
+            "enum": [
+              "rail",
+              "button"
+            ]
+          }
+        }
+      },
+      "PlaylistUpdateRequest": {
+        "type": "object",
+        "description": "Every field is optional. Send only what you want to change.",
+        "properties": {
+          "playback_mode": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "course"
+            ]
+          },
+          "playlist_code": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "auto_advance": {
+            "type": "boolean"
+          },
+          "auto_advance_delay_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30000
+          },
+          "loop": {
+            "type": "boolean"
+          },
+          "lesson_navigation": {
+            "type": "string",
+            "enum": [
+              "sidebar",
+              "next-button",
+              "both",
+              "none"
+            ]
+          },
+          "playlist_chrome": {
+            "type": "string",
+            "enum": [
+              "rail",
+              "button"
+            ]
+          }
+        }
+      },
+      "PlaylistItem": {
+        "type": "object",
+        "properties": {
+          "video_code": {
+            "type": "string",
+            "description": "The item's video code. This is the key every item operation addresses it by: there is no numeric item ID."
+          },
+          "title": {
+            "type": "string"
+          },
+          "lesson_label": {
+            "type": "string"
+          },
+          "duration_s": {
+            "type": "integer"
+          },
+          "thumb_url": {
+            "type": "string"
+          }
+        }
+      },
+      "PlaylistItemsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaylistItem"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "description": "Only present on `GET /playlists/{playlist}/videos`."
+          }
+        }
+      },
+      "PlaylistItemCreateRequest": {
+        "type": "object",
+        "required": [
+          "video_code"
+        ],
+        "properties": {
+          "video_code": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "The code of the video to add to the playlist. Required."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "lesson_label": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "duration_s": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "thumb_url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          }
+        }
+      },
+      "PlaylistItemUpdateRequest": {
+        "type": "object",
+        "description": "Every field is optional. Send only what you want to change.",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "lesson_label": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "duration_s": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "thumb_url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          }
+        }
+      },
+      "Webhook": {
+        "type": "object",
+        "description": "A webhook subscription. `secret` is never included in any response, including the response to the call that created it: the value is write-only. If you did not set your own `secret` on creation, save the one you sent, because a server-generated secret cannot be read back later.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "workspace_id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "last_success_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_failure_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "failure_count": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "WebhookEnvelope": {
+        "type": "object",
+        "properties": {
+          "webhook": {
+            "$ref": "#/components/schemas/Webhook"
+          }
+        }
+      },
+      "WebhookListResponse": {
+        "type": "object",
+        "properties": {
+          "webhooks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Webhook"
+            }
+          },
+          "supported_events": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Every event name you can subscribe to.",
+            "examples": [
+              [
+                "video.created",
+                "video.uploaded",
+                "video.settings.deployed",
+                "video.deleted",
+                "video.viewed",
+                "conversion",
+                "conversion.created",
+                "play",
+                "play.milestone",
+                "cta.clicked",
+                "ended",
+                "lead.captured",
+                "lesson.completed",
+                "playlist.ended",
+                "lead_form.submitted",
+                "quiz.answered",
+                "split_test.winner_declared"
+              ]
+            ]
+          }
+        }
+      },
+      "WebhookCreateRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "url",
+          "events"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048,
+            "description": "Where deliveries are POSTed."
+          },
+          "events": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": [
+                "video.created",
+                "video.uploaded",
+                "video.settings.deployed",
+                "video.deleted",
+                "video.viewed",
+                "conversion",
+                "conversion.created",
+                "play",
+                "play.milestone",
+                "cta.clicked",
+                "ended",
+                "lead.captured",
+                "lesson.completed",
+                "playlist.ended",
+                "lead_form.submitted",
+                "quiz.answered",
+                "split_test.winner_declared"
+              ]
+            },
+            "description": "Which events this subscription fires on. Every entry must be one of the supported event names."
+          },
+          "secret": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 128,
+            "description": "Used to HMAC-SHA256 sign deliveries in the `X-Trackplay-Signature` header. Generated for you if omitted, but a generated secret can never be read back, only rotated by deleting and recreating the subscription. Send your own if you need to know it ahead of time."
+          }
+        }
+      },
+      "WebhookTestSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "delivered": {
+            "type": "boolean",
+            "examples": [
+              true
+            ]
+          },
+          "status_code": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The HTTP status your endpoint returned for the test delivery."
+          }
+        }
+      },
+      "WebhookTestFailureResponse": {
+        "type": "object",
+        "description": "Returned with a 502 when the test delivery could not be sent at all (DNS failure, connection refused, timeout). A non-2xx response from your endpoint still counts as delivered: check `status_code` on the 200 response for that case.",
+        "properties": {
+          "delivered": {
+            "type": "boolean",
+            "examples": [
+              false
+            ]
+          },
+          "error": {
+            "type": "string",
+            "description": "The underlying delivery error."
+          }
+        }
+      },
+      "ZapierMeResponse": {
+        "type": "object",
+        "properties": {
+          "workspace_id": {
+            "type": "integer"
+          },
+          "workspace_name": {
+            "type": "string"
+          },
+          "workspace_code": {
+            "type": "string"
+          }
+        }
+      },
+      "ZapierTrigger": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "new_lead",
+              "new_conversion",
+              "play_milestone",
+              "split_test_winner",
+              "cta_clicked",
+              "video_viewed"
+            ],
+            "description": "The trigger key. Use this in `POST /zapier/subscribe` and `GET /zapier/triggers/{event}/sample`."
+          },
+          "event": {
+            "type": "string",
+            "description": "The underlying lifecycle event this trigger maps to one-to-one."
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "ZapierTriggersResponse": {
+        "type": "object",
+        "properties": {
+          "triggers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZapierTrigger"
+            }
+          }
+        }
+      },
+      "ZapierSampleEnvelope": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "examples": [
+              "sample_new_lead"
+            ]
+          },
+          "event": {
+            "type": "string",
+            "description": "The underlying lifecycle event name."
+          },
+          "workspace_id": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "The event's payload. Shape depends on the trigger."
+          }
+        }
+      },
+      "ZapierSampleResponse": {
+        "type": "array",
+        "description": "A one-element array holding the sample envelope. Zapier's polling-trigger contract expects an array, even though there is only ever one sample.",
+        "items": {
+          "$ref": "#/components/schemas/ZapierSampleEnvelope"
+        },
+        "minItems": 1,
+        "maxItems": 1
+      },
+      "ZapierUnknownTriggerError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "examples": [
+              "unknown_trigger"
+            ]
+          }
+        }
+      },
+      "ZapierSubscribeRequest": {
+        "type": "object",
+        "required": [
+          "target_url",
+          "event"
+        ],
+        "properties": {
+          "target_url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048,
+            "description": "The Zap's hook URL. TrackPlay POSTs a signed delivery here on every matching event."
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "new_lead",
+              "new_conversion",
+              "play_milestone",
+              "split_test_winner",
+              "cta_clicked",
+              "video_viewed"
+            ],
+            "description": "Which trigger to subscribe to."
+          }
+        }
+      },
+      "ZapierSubscribeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Echo this back on `DELETE /zapier/subscribe/{id}` to unsubscribe."
+          },
+          "event": {
+            "type": "string",
+            "description": "The underlying lifecycle event name this subscription was created for."
+          }
+        }
+      },
+      "IdentifyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workspace_code"
+        ],
+        "properties": {
+          "workspace_code": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Your workspace's public code. Required."
+          },
+          "video_code": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "The video this identity is associated with. Send it along with a raw `email` to also tee a lead into the workspace's lead list."
+          },
+          "session_code": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "The tracker's session ID, if you have one."
+          },
+          "device_id": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "The tracker's local device ID, if you have one."
+          },
+          "device_global_id": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "A raw email address. Hashed on arrival to both SHA-256 and MD5, and never stored raw."
+          },
+          "email_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "A pre-hashed email, lowercase hex, if you hash client-side instead of sending it raw."
+          },
+          "email_md5": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "A raw phone number. Normalized to E.164 and hashed on arrival."
+          },
+          "phone_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "phone_md5": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "external_id": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Your own customer ID, if you already have one for this viewer."
+          },
+          "page_url": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "description": "At least one identity signal is required: `email`, `email_sha256`, `email_md5`, `phone`, `phone_sha256`, `phone_md5`, `external_id`, `session_code`, `device_id`, or `device_global_id`. A payload naming none of them is rejected, because it would mint an identity that nothing can ever resolve back to. Any field not listed here is rejected outright: the schema is closed."
+      },
+      "IdentifyResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "profile_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The resolved or newly minted profile ID. `null` only in the failure paths, never on a 200."
+          }
+        }
+      },
+      "BrowserConversionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workspace_code",
+          "integration",
+          "order_id",
+          "value"
+        ],
+        "properties": {
+          "workspace_code": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Your workspace's public code. Required."
+          },
+          "integration": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "Which cart integration this fallback backs, e.g. `clickbank`. Required. The integration must have the browser conversion fallback turned on for this workspace, or the call is rejected."
+          },
+          "order_id": {
+            "type": "string",
+            "maxLength": 190,
+            "description": "Your order ID. Required. This is the dedup key: a server-to-server postback for the same integration and order collapses into the same row, and the server-confirmed row always wins."
+          },
+          "value": {
+            "type": "number",
+            "minimum": 0,
+            "description": "The sale amount. Required."
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 3,
+            "default": "USD"
+          },
+          "conversion_type": {
+            "type": "string",
+            "maxLength": 40,
+            "default": "purchase"
+          },
+          "is_test": {
+            "type": "boolean",
+            "default": false
+          },
+          "session_id": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "The player session that produced the sale, if you have it. Used to attribute the conversion and to pick up the session's video if `video_code` is omitted."
+          },
+          "device_id": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "video_code": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Wins over the session's last video when both are available."
+          },
+          "customer_email": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "customer_phone": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "customer_name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "product_name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "product_code": {
+            "type": "string",
+            "maxLength": 190
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Extra key/value pairs to keep with the conversion."
+          }
+        },
+        "description": "Every row this endpoint writes is stamped `conversion_source: browser` and `verified: false`. It never feeds the revenue, EPC, RPV, or ROAS numbers your dashboard treats as real: those only count `verified` rows. It also never fires ad-platform pixels or CRM webhooks, because an unverified sale must not reach a customer's ad account as a confirmed Purchase event. Use this only as a fallback for a cart that cannot post server-to-server; prefer the real integration postback or `POST /conversions` wherever you can reach either one."
+      },
+      "BrowserConversionResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "description": "The conversion's dedup ID, `<integration>:<order_id>`."
+          },
+          "conversion_source": {
+            "type": "string",
+            "examples": [
+              "browser"
+            ]
+          },
+          "verified": {
+            "type": "boolean",
+            "examples": [
+              false
+            ]
+          },
+          "attributed": {
+            "type": "boolean",
+            "description": "True when `session_id` resolved to a known session."
+          }
+        }
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Videos",
+      "description": "Create, read, update, and delete videos, and read workspace metadata."
+    },
+    {
+      "name": "Video settings",
+      "description": "Save a settings draft, publish it live, and read or restore past deploys."
+    },
+    {
+      "name": "Uploads",
+      "description": "Upload a source video file, either as a single request or in resumable chunks."
+    },
+    {
+      "name": "Captions and chapters",
+      "description": "Manage caption tracks, chapter markers, AI-generated segments, and CTA cards on a video."
+    },
+    {
+      "name": "Playlists",
+      "description": "Group videos into a playlist or course, and manage the videos inside it."
+    },
+    {
+      "name": "Webhooks",
+      "description": "Subscribe a URL to TrackPlay lifecycle events and test deliveries."
+    },
+    {
+      "name": "Zapier",
+      "description": "The REST-hook endpoints Zapier calls to connect a workspace and manage triggers."
+    },
+    {
+      "name": "Analytics",
+      "description": "Read play, retention, event, and conversion analytics for a video."
+    },
+    {
+      "name": "Exports",
+      "description": "Queue and download bulk analytics exports."
+    },
+    {
+      "name": "Conversions",
+      "description": "Report a sale or a lead, from your own server or from a browser fallback."
+    },
+    {
+      "name": "Events",
+      "description": "Send a custom event tied to a viewer's session."
+    },
+    {
+      "name": "Identity",
+      "description": "Resolve a viewer's identity from the page, with no token required."
+    }
+  ]
 }

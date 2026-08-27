@@ -1,0 +1,292 @@
+---
+title: "Webhooks Management API"
+description: "Create, list, delete and test webhook subscriptions from your own backend instead of the dashboard, plus the Zapier REST hooks that ride the same machinery."
+icon: "satellite-dish"
+sidebarTitle: "Webhooks API"
+---
+
+This page is about managing **subscriptions**: creating them, listing them, deleting
+them, and firing a test delivery. For what a delivery looks like on the wire, headers,
+signature, retries, see [Webhooks](/integration/webhooks). That page does not change
+here; this one only adds an API for the same subscriptions it describes.
+
+Every call on this page needs a token with `webhooks:write`.
+
+## List subscriptions and the event catalogue
+
+```bash curl
+curl https://app.trackplay.io/api/v1/webhooks \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{
+  "webhooks": [
+    { "id": 9, "workspace_id": 41, "name": "CRM sync", "url": "https://example.com/hooks/trackplay", "events": ["conversion.created", "lead.captured"], "is_active": true, "failure_count": 0, "created_at": "2026-08-01T09:00:00Z" }
+  ],
+  "supported_events": [
+    "video.created", "video.uploaded", "video.settings.deployed", "video.deleted",
+    "video.viewed", "conversion", "conversion.created", "play", "play.milestone",
+    "cta.clicked", "ended", "lead.captured", "lesson.completed", "playlist.ended",
+    "lead_form.submitted", "quiz.answered", "split_test.winner_declared"
+  ]
+}
+```
+
+`supported_events` is the exact, complete list `POST /v1/webhooks` will accept in
+`events[]`. Nothing outside it is valid.
+
+<Note>
+  A subscription's `secret` never appears in this list, or anywhere else this API
+  returns a subscription. See the warning below.
+</Note>
+
+## Create a subscription
+
+<ParamField body="name" type="string" required>
+  Max 128 characters.
+</ParamField>
+<ParamField body="url" type="string" required>
+  A valid URL, max 2048 characters.
+</ParamField>
+<ParamField body="events" type="string[]" required>
+  At least one event, each from the `supported_events` list above.
+</ParamField>
+<ParamField body="secret" type="string">
+  16 to 128 characters. If you omit it, the server generates one with no fixed prefix.
+</ParamField>
+
+<Warning>
+  **The response never includes `secret`, not even on creation, not even if you
+  generated it yourself.** The subscription model hides that field on every response
+  this API returns, with no exception for the create call. If you supply your own
+  `secret`, this costs you nothing, you already have it. If you omit it and let the
+  server generate one, you have no way to read it back through this API, ever, and you
+  cannot verify a delivery's signature without it. Always send your own `secret` (16 to
+  128 characters, generated and stored on your side) rather than relying on the
+  server-generated one.
+</Warning>
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://app.trackplay.io/api/v1/webhooks \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "CRM sync",
+    "url": "https://example.com/hooks/trackplay",
+    "events": ["conversion.created", "lead.captured"],
+    "secret": "wh_9f2c1a7e4d3b4a119e770b2c5d8e1f34"
+  }'
+```
+
+```js Node
+await fetch('https://app.trackplay.io/api/v1/webhooks', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'CRM sync',
+    url: 'https://example.com/hooks/trackplay',
+    events: ['conversion.created', 'lead.captured'],
+    secret: 'wh_9f2c1a7e4d3b4a119e770b2c5d8e1f34',
+  }),
+});
+```
+
+</CodeGroup>
+
+```json 201 Created
+{
+  "webhook": {
+    "id": 9,
+    "workspace_id": 41,
+    "name": "CRM sync",
+    "url": "https://example.com/hooks/trackplay",
+    "events": ["conversion.created", "lead.captured"],
+    "is_active": true,
+    "failure_count": 0,
+    "created_at": "2026-08-12T10:00:00Z",
+    "updated_at": "2026-08-12T10:00:00Z"
+  }
+}
+```
+
+## Delete a subscription
+
+```bash curl
+curl -X DELETE https://app.trackplay.io/api/v1/webhooks/9 \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{ "deleted": true }
+```
+
+## Send a test delivery
+
+```bash curl
+curl -X POST https://app.trackplay.io/api/v1/webhooks/9/test \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{ "delivered": true, "status_code": 200 }
+```
+
+```json 502 Bad Gateway
+{ "delivered": false, "error": "cURL error 28: Connection timed out" }
+```
+
+This sends a real `webhook.test` payload to the subscription's URL, signed the same
+way a live delivery is. Unlike a live delivery, it is attempted exactly once: a failed
+test is not queued for retry. You get the failure reason back inline instead, which is
+the point, it is meant for debugging your endpoint, not for exercising the retry path.
+See [Webhooks](/integration/webhooks#retries) for how a real delivery's retries work.
+
+## Zapier REST hooks
+
+The Zapier integration runs on the same `webhooks:write` token, supplied as the
+connection's "API Key" field, and every subscription it creates is a normal webhook
+subscription under the hood.
+
+<Warning>
+  All five Zapier routes below, including the three `GET`s, share the write rate limit:
+  **60 requests per minute per token**, not the 600-per-minute read tier the rest of
+  this API gives `GET` calls.
+</Warning>
+
+### Connection test
+
+```bash curl
+curl https://app.trackplay.io/api/v1/zapier/me \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{ "workspace_id": 41, "workspace_name": "Acme", "workspace_code": "acme" }
+```
+
+### Trigger catalogue
+
+```bash curl
+curl https://app.trackplay.io/api/v1/zapier/triggers \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{
+  "triggers": [
+    { "key": "new_lead", "event": "lead.captured", "label": "New Lead", "description": "Fires when a viewer submits a lead-capture form on a video." },
+    { "key": "new_conversion", "event": "conversion.created", "label": "New Conversion", "description": "Fires when a sale/conversion is attributed to a video." },
+    { "key": "play_milestone", "event": "play.milestone", "label": "Play Milestone Reached", "description": "Fires when a viewer reaches 25/50/75/100% of a video." },
+    { "key": "split_test_winner", "event": "split_test.winner_declared", "label": "Split Test Winner Declared", "description": "Fires when a winning variation is declared for an A/B test." },
+    { "key": "cta_clicked", "event": "cta.clicked", "label": "CTA Clicked", "description": "Fires when a viewer clicks a call-to-action in a video." },
+    { "key": "video_viewed", "event": "video.viewed", "label": "Video Viewed", "description": "Fires when a video is loaded/started by a viewer." }
+  ]
+}
+```
+
+<Note>
+  `key` is the Zapier trigger identifier. `event` is the internal webhook event name it
+  maps to. They are different strings, `new_lead` versus `lead.captured`, and the two
+  calls below expect different ones: `subscribe` and `sample` take the trigger `key`,
+  the internal `event` name is not valid input to either.
+</Note>
+
+### Sample payload
+
+```bash curl
+curl https://app.trackplay.io/api/v1/zapier/triggers/new_lead/sample \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+[
+  {
+    "id": "sample_new_lead",
+    "event": "lead.captured",
+    "workspace_id": 41,
+    "created_at": "2026-08-12T10:00:00Z",
+    "data": {
+      "video_code": "vid_abc123",
+      "identity": { "email": "jane@example.com", "first_name": "Jane" },
+      "url": "https://example.com/vsl",
+      "captured_at": "2026-08-12T10:00:00Z"
+    }
+  }
+]
+```
+
+An unknown trigger key returns `{"error": "unknown_trigger"}`, a flat string, not the
+`{"error": {"code": ...}}` object shape every other endpoint on this page uses.
+
+### Subscribe
+
+<ParamField body="target_url" type="string" required>
+  A valid URL, max 2048 characters. This is the Zap's hook URL.
+</ParamField>
+<ParamField body="event" type="string" required>
+  A trigger **key** from the catalogue above (`new_lead`, not `lead.captured`).
+</ParamField>
+
+```bash curl
+curl -X POST https://app.trackplay.io/api/v1/zapier/subscribe \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "target_url": "https://hooks.zapier.com/hooks/standard/xxxxx/", "event": "new_lead" }'
+```
+
+```json 201 Created
+{ "id": 14, "event": "lead.captured" }
+```
+
+The response echoes back the internal event name, not the trigger key you sent. This
+creates a normal webhook subscription behind the scenes, named `Zapier: New Lead`,
+with its own generated secret, the same "you cannot read it back" caveat above applies
+here too.
+
+### Unsubscribe
+
+```bash curl
+curl -X DELETE https://app.trackplay.io/api/v1/zapier/subscribe/14 \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{ "deleted": true }
+```
+
+Returns `{"deleted": true}` whether or not that id existed. There is no 404 from this
+call.
+
+## Errors
+
+<AccordionGroup>
+  <Accordion title="401: INVALID_TOKEN">
+    The token is wrong, expired, or revoked.
+  </Accordion>
+  <Accordion title="403: INSUFFICIENT_SCOPE">
+    Every call on this page needs `webhooks:write`.
+  </Accordion>
+  <Accordion title="404">
+    No subscription with that id in your workspace, on `DELETE /v1/webhooks/{webhook}`
+    or `POST /v1/webhooks/{webhook}/test`. Laravel's default body: `{"message": "No
+    query results for model [App\\Models\\WebhookSubscription] 9"}`.
+  </Accordion>
+  <Accordion title="422">
+    Validation failed on create or subscribe, most often an `events[]` value outside
+    `supported_events`, or a `secret` shorter than 16 characters.
+  </Accordion>
+  <Accordion title="502">
+    A test delivery could not reach the subscription's URL. `{"delivered": false,
+    "error": "<reason>"}`.
+  </Accordion>
+  <Accordion title="429">
+    Rate limited. 60 requests per minute per token, on every call on this page
+    including the Zapier `GET`s.
+  </Accordion>
+</AccordionGroup>

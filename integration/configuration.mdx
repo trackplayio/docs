@@ -19,8 +19,7 @@ These carry the viewer's session into the checkout and post the sale back.
   <Card title="BuyGoods" icon="cart-shopping" href="/integration/buygoods" />
   <Card title="ClickBank" icon="cart-shopping" href="/integration/clickbank" />
   <Card title="Digistore24" icon="cart-shopping" href="/integration/digistore24" />
-  <Card title="ThriveCart" icon="cart-shopping" href="/integration/thrivecart" />
-  <Card title="SamCart" icon="cart-shopping" href="/integration/samcart" />
+  <Card title="Kiwify" icon="cart-shopping" href="/integration/kiwify" />
   <Card title="WarriorPlus" icon="cart-shopping" href="/integration/warriorplus" />
   <Card title="JVZoo" icon="cart-shopping" href="/integration/jvzoo" />
   <Card title="ElasticFunnels" icon="cart-shopping" href="/integration/elasticfunnels" />
@@ -67,18 +66,26 @@ Once it is **Active**:
   </Card>
 </CardGroup>
 
-**Meta CAPI**, **TikTok Events** and **GA4** connect the same way: card, **Connect**,
-paste your credentials. They fire server-side, so an ad blocker cannot quietly drop your
-conversions.
-
-**RedTrack** and **Everflow** take a postback template, with macros for click ID, payout,
-currency and order ID.
+<CardGroup cols={2}>
+  <Card title="Server-side pixels" icon="satellite-dish" href="/integration/server-side-pixels">
+    Meta CAPI, TikTok Events and GA4, fired from our servers so an ad blocker cannot drop
+    a conversion.
+  </Card>
+  <Card title="RedTrack and Everflow" icon="arrow-right-arrow-left" href="/integration/postback-partners">
+    A postback template with macros for click ID, payout, currency and order ID.
+  </Card>
+</CardGroup>
 
 ## CRM
 
-**ActiveCampaign** and **GoHighLevel** connect with an API key. Once connected, you can tag
-a viewer in your CRM based on how far they watched: see [Timed
-events](/player/cta-and-timing#timed-events).
+<CardGroup cols={2}>
+  <Card title="CRM tagging" icon="tags" href="/integration/crm-tagging">
+    Tag a viewer in GoHighLevel or ActiveCampaign based on how far they watched.
+  </Card>
+  <Card title="Zapier and Make" icon="bolt" href="/integration/zapier-make">
+    Leads, sales and split-test winners into anything else you run.
+  </Card>
+</CardGroup>
 
 ## Outbound
 
@@ -86,8 +93,8 @@ events](/player/cta-and-timing#timed-events).
   <Card title="Webhooks" icon="webhook" href="/integration/webhooks">
     Signed, retried, and yours to consume.
   </Card>
-  <Card title="Zapier" icon="bolt" href="/integration/webhooks#zapier">
-    Leads, sales and split-test winners into anything.
+  <Card title="Conversions API" icon="cart-shopping" href="/api-reference/conversions">
+    Post a sale from your own backend when no cart integration covers it.
   </Card>
 </CardGroup>
 

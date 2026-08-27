@@ -73,11 +73,16 @@ const summary = await res.json();
 }
 ```
 
-<Tip>
-  The summary response carries `Cache-Control: private, max-age=60` and an `ETag`. Send the
-  `ETag` back as `If-None-Match` and a repeat within the minute returns `304 Not Modified`
-  with no body. It keeps a polling dashboard cheap.
-</Tip>
+<Note>
+  The summary response carries `Cache-Control: private, max-age=60` and an `ETag`. The
+  summary itself is computed once and cached for 60 seconds, so polling faster than that
+  costs you nothing on our side and returns the same numbers.
+
+  Conditional requests are **not** honoured yet. Sending the `ETag` back as
+  `If-None-Match` returns a full `200` with the body, never a `304`. Use the `ETag` to
+  compare against your own cached copy if that is useful, but do not write a client that
+  depends on a `304` arriving.
+</Note>
 
 ### Read the retention curve
 

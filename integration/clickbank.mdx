@@ -28,16 +28,18 @@ full.
 
 | Parameter | |
 | --- | --- |
-| `unique_aff_sub1` | Unique Affiliate Sub 1 |
-| `unique_aff_sub2` | Unique Affiliate Sub 2 |
-| `unique_aff_sub3` | Unique Affiliate Sub 3 |
-| `unique_aff_sub4` | Unique Affiliate Sub 4 |
-| `unique_aff_sub5` | Unique Affiliate Sub 5 |
+| `tid` | Tracking ID. The default. |
 | `vtid` | Vendor Tracking ID |
+| `v1` | Vendor parameter 1 |
 
 <Warning>
-  Pick one your affiliates are not already using. TrackPlay overwrites the parameter you
-  choose on every ClickBank URL.
+  These three are the only values ClickBank echoes back on the postback. Pick anything
+  else and the sale still completes, the postback still arrives, and the session is not in
+  it. TrackPlay records the sale as organic and the integration still reads **Active**. No
+  error is raised anywhere.
+
+  Also pick one your affiliates are not already using. TrackPlay overwrites the parameter
+  you choose on every ClickBank URL.
 </Warning>
 
 ## Set up the notification URL

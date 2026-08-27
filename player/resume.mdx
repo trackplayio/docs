@@ -1,0 +1,99 @@
+---
+title: "Bringing viewers back"
+description: "A viewer who leaves at 40% and comes back tomorrow should not start over. Here is what TrackPlay remembers, where, and for how long."
+icon: "clock-rotate-left"
+sidebarTitle: "Resume"
+---
+
+A viewer who bounces at 40% and returns is not a new viewer. Treat them like one and you
+lose the eight minutes they already gave you. TrackPlay has two separate mechanisms for
+bringing them back to where they stopped, and they behave very differently.
+
+## Continue Watching
+
+The plain version: a viewer who watched past a threshold and left gets a **Continue** or
+**Restart** choice the next time they open the same video, in the same browser.
+
+**Video → Customize → Continue Watching.**
+
+<ParamField path="continue_watching_options.enabled" type="boolean">
+  Turns the overlay on.
+</ParamField>
+<ParamField path="continue_watching_options.time" type="clock string" required>
+  The minimum watch time before a return visit counts as "already started." This is
+  **not** a plain number of seconds. The validator only accepts `MM:SS` or `HH:MM:SS`,
+  for example `00:30` or `01:15:00`. Send `30` and the save fails.
+</ParamField>
+
+<Warning>
+  The saved position lives in the browser's `sessionStorage`, scoped to that video. It
+  does not survive the tab or browser closing, and it does not follow the viewer to a
+  different device. For that, see cross-device resume below.
+</Warning>
+
+Clicking **Continue** seeks to the saved position and plays. Clicking **Restart** clears
+it and plays from zero. Both are tracked (`video-continue` and `video-restart`), so you
+can see which one viewers actually pick.
+
+## Cross-device resume
+
+The harder version: the viewer watched half your video on their phone at lunch, then
+opened it again on their laptop that evening. TrackPlay can pick up where they left off,
+but only if it can tell that the laptop and the phone belong to the same viewer.
+
+**There is no dashboard tab for this.** Turn it on through the [Video Settings
+API](/api-reference/video-settings) (`cross_device_resume_options.enabled`), or ask
+TrackPlay's dashboard assistant to enable it for a video.
+
+<ParamField path="cross_device_resume_options.enabled" type="boolean">
+  Turns cross-device sync on. Off by default.
+</ParamField>
+<ParamField path="cross_device_resume_options.sync_interval_s" type="integer, 5-600" default="10">
+  How often, in seconds, the player pushes the current position to TrackPlay while
+  playing.
+</ParamField>
+<ParamField path="cross_device_resume_options.threshold_pct" type="integer, 1-100" default="5">
+  The minimum percentage watched before a resume prompt is worth showing on the next
+  device.
+</ParamField>
+
+<Warning>
+  This depends entirely on identifying the viewer as the same person across the two
+  visits, and by default that identity is a random ID the player stores in the browser's
+  `localStorage` on first visit. That ID lives in **one browser on one device**. It does
+  not, by itself, connect a phone visit to a laptop visit. Out of the box, cross-device
+  resume behaves like a longer-lived version of Continue Watching (positions kept for 90
+  days instead of one tab session), not like a true cross-device handoff. A genuine
+  phone-to-laptop resume needs the viewer identified some other way, for example a
+  logged-in account on your own site, so the same stable identifier can be handed to the
+  player on both devices.
+</Warning>
+
+When no stable identity is available at all, the endpoint responds with position `0` and
+the player behaves exactly as if cross-device resume were off. Nothing breaks, the
+viewer does not get a resume prompt, that is the whole difference.
+
+## How the player decides which overlay to show
+
+On load, before the viewer has touched anything, TrackPlay has to pick one of several
+possible overlays. It checks them in this order and shows the first match:
+
+<Steps>
+  <Step title="Thumbnail">
+    If a landscape or portrait thumbnail is configured and enabled, and the viewer has
+    not already interacted with this video in the current browser session, the
+    thumbnail wins. Nothing else shows until they click it.
+  </Step>
+  <Step title="Continue Watching">
+    If there is no thumbnail in the way and a saved position exists (see above), the
+    Continue/Restart prompt shows instead.
+  </Step>
+  <Step title="Autoplay's muted teaser">
+    If neither of the above applies and autoplay is on, the video starts muted with the
+    autoplay overlay over it.
+  </Step>
+</Steps>
+
+The **Paused** overlay is not part of this list. It is a different state entirely: it
+only appears when a viewer who is actively watching pauses the video mid-session, not as
+part of the initial load decision.

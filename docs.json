@@ -35,6 +35,8 @@
             "pages": [
               "configuration/player-options",
               "player/themes",
+              "player/playback",
+              "player/resume",
               {
                 "group": "Convert the viewer",
                 "icon": "bullseye",
@@ -68,7 +70,22 @@
             "icon": "chart-line",
             "pages": [
               "analytics/overview",
+              "analytics/retention",
+              "analytics/insights",
+              "analytics/live-stats",
+              "analytics/sources",
+              "analytics/funnel-and-breakdown",
+              "analytics/quality",
               "analytics/custom-metrics"
+            ]
+          },
+          {
+            "group": "Audience",
+            "icon": "users",
+            "pages": [
+              "audience/hot-leads",
+              "audience/customer-360",
+              "audience/exports"
             ]
           },
           {
@@ -90,8 +107,7 @@
                   "integration/buygoods",
                   "integration/clickbank",
                   "integration/digistore24",
-                  "integration/thrivecart",
-                  "integration/samcart",
+                  "integration/kiwify",
                   "integration/warriorplus",
                   "integration/jvzoo",
                   "integration/elasticfunnels"
@@ -102,7 +118,8 @@
                 "icon": "tags",
                 "pages": [
                   "integration/gtm",
-                  "integration/segment"
+                  "integration/segment",
+                  "integration/server-side-pixels"
                 ]
               },
               {
@@ -112,10 +129,26 @@
                   "integration/conversion-tracking",
                   "integration/browser-conversion-fallback",
                   "integration/webhooks",
+                  "integration/postback-partners",
                   "integration/analytics"
                 ]
               },
-              "integration/elevenlabs-ai-segments"
+              {
+                "group": "Automation and CRM",
+                "icon": "robot",
+                "pages": [
+                  "integration/crm-tagging",
+                  "integration/zapier-make"
+                ]
+              },
+              {
+                "group": "AI",
+                "icon": "sparkles",
+                "pages": [
+                  "integration/elevenlabs-ai-segments",
+                  "integration/ai-dubbing"
+                ]
+              }
             ]
           },
           {
@@ -125,7 +158,17 @@
               "events/video-events",
               "events/timed-events",
               "events/user-events",
-              "events/pixel-events"
+              "events/pixel-events",
+              "events/analytics-events"
+            ]
+          },
+          {
+            "group": "Account",
+            "icon": "gear",
+            "pages": [
+              "account/plans-and-plays",
+              "account/workspaces",
+              "account/videos"
             ]
           }
         ]
@@ -147,7 +190,12 @@
               "api-reference/identify",
               "api-reference/custom-events",
               "api-reference/conversions",
-              "api-reference/analytics"
+              "api-reference/analytics",
+              "api-reference/videos",
+              "api-reference/video-settings",
+              "api-reference/uploads",
+              "api-reference/playlists",
+              "api-reference/webhooks-api"
             ]
           },
           {

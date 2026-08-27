@@ -26,13 +26,23 @@ The Digistore24 integration allows TrackPlay to:
 
 Choose which parameter TrackPlay should use to inject your session ID:
 
-**Available Parameters:**
-- `cpersist` - Digistore24 custom persistence parameter (recommended)
-- `aff_sub` - Affiliate sub-parameter
-- `sub1`, `sub2`, `sub3` - Generic sub-parameters
+**Available parameters:**
 
-1. Select your preferred tracking parameter from the dropdown
+| Parameter | Use it when |
+| --- | --- |
+| `custom` | The default, and the right answer for a vendor. Digistore24 gives you exactly one general-purpose custom slot, and this is it. |
+| `campaignkey` | You are already using `custom` for something else. Affiliate-oriented. |
+| `trackingkey` | Same as above. Affiliate-oriented. |
+
+1. Select your tracking parameter from the dropdown
 2. Click **Save & Verify**
+
+<Warning>
+  These three are the only values Digistore24 echoes back on the IPN. Pick anything else
+  and Digistore24 accepts the link, the sale completes, the IPN arrives, and the session
+  is not in it. The conversion is recorded as organic and your integration still reads
+  **Active**. Nothing anywhere reports an error.
+</Warning>
 
 ### Step 3: Configure Digistore24 IPN URL and Verify
 

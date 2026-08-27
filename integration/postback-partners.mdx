@@ -1,0 +1,116 @@
+---
+title: "RedTrack & Everflow"
+description: "Fire a conversion postback to your tracker with URL macros TrackPlay fills in from the sale, and only when there is a real click to attribute it to."
+icon: "route"
+sidebarTitle: "RedTrack & Everflow"
+---
+
+RedTrack and Everflow attribute a sale to a click. TrackPlay fires a GET request to a URL
+template you provide, with macros filled in from the conversion.
+
+## Connect it
+
+<Steps>
+  <Step title="Open Integrations">
+    Click **Integrations** in the sidebar, find **RedTrack** or **Everflow**, and click
+    **Connect**.
+  </Step>
+  <Step title="Paste your postback URL">
+    Use your tracker's macro syntax for anything TrackPlay does not fill in itself, and
+    TrackPlay's macros (below) for the rest.
+  </Step>
+  <Step title="Save">
+    The integration goes **Active** immediately. There is no test postback to wait for:
+    the next real conversion is the first delivery.
+  </Step>
+</Steps>
+
+<CodeGroup>
+
+```text RedTrack
+https://yourdomain.rdtk.io/postback?clickid={clickid}&sum={payout}
+```
+
+```text Everflow
+https://www.yourdomain.com/?nid=1&transaction_id={clickid}&amount={payout}
+```
+
+</CodeGroup>
+
+## Macros
+
+<ParamField body="{clickid}" type="string">
+  The tracker's own click id for the converting session. See below: this only resolves
+  for a session TrackPlay can trace back to a click.
+</ParamField>
+<ParamField body="{payout}" type="string">
+  The conversion value.
+</ParamField>
+<ParamField body="{currency}" type="string">
+  Three-letter currency code.
+</ParamField>
+<ParamField body="{video_code}" type="string">
+  The video the sale is credited to.
+</ParamField>
+<ParamField body="{order_id}" type="string">
+  The cart's order id, or the `conversion_id` you sent if you used the Conversions API.
+</ParamField>
+
+## When the postback does not fire
+
+<Warning>
+  **Read this before you rely on these postbacks.**
+
+  `{clickid}` is filled from one of three places, in order: a `clickid` on the conversion
+  payload, a `click_id` on it, or a lookup against the session's captured click identity
+  under the tracker's own parameter names (`rtkclickid`, `clickid`, `cid` for RedTrack;
+  `ef_transaction_id`, `clickid`, `click_id` for Everflow).
+
+  That third path does not resolve in practice. The player's click-id capture list holds
+  ad-platform ids (`fbclid`, `gclid`, `ttclid` and similar) and **deliberately does not
+  capture tracker click ids**, so there is nothing stored under any of the names the
+  lookup asks for. Unless your conversion payload carries `clickid` or `click_id`
+  directly, `{clickid}` resolves to empty.
+
+  When it is empty, TrackPlay does **not** send the postback. That is deliberate: a
+  tracker that receives an empty `clickid` records an unattributable conversion and its
+  log still reads "delivered". Not sending it is the only way an empty value does not
+  quietly corrupt your tracker's numbers.
+
+  The practical consequence is that the integration can sit on **Active** and never
+  deliver anything, and there is no customer-facing delivery log to tell you so. Confirm
+  with your tracker that conversions are arriving before you trust these numbers.
+</Warning>
+
+A conversion with no session at all (a sale from a link you built by hand, or one
+TrackPlay could not join to a play) never reaches this stage: RedTrack and Everflow
+postbacks fire only for `conversion.created`, and only once a session is known.
+
+## Fires on real revenue only
+
+Like every server-side sender, RedTrack and Everflow only hear about a genuine `purchase`
+or `rebill`. A refund, a chargeback, and anything flagged as a test sale never generate a
+postback.
+
+## When it does not work
+
+<AccordionGroup>
+  <Accordion title="Integration shows Active but the tracker never logs a conversion">
+    Confirm the postback URL is saved with the exact macro syntax above (case-sensitive
+    curly braces). If the URL is correct, the most common cause is an unresolved
+    `{clickid}`: see the warning above. TrackPlay does not surface a per-conversion delivery
+    log for this integration today, so the fastest way to confirm is a real sale from
+    traffic you know carries a trackable click id.
+  </Accordion>
+  <Accordion title="Some conversions post, others silently do not">
+    Expected if your traffic mix includes sessions with no resolvable click id alongside
+    sessions that have one. Direct traffic, email clicks, and organic sessions never carry
+    a click id and never fire a postback.
+  </Accordion>
+  <Accordion title="RedTrack or Everflow rejects the postback">
+    Check `{payout}` and `{currency}` are in the position your tracker's template expects,
+    and that the base URL (your tracker domain, not TrackPlay's) is correct. TrackPlay logs
+    the HTTP status it got back; a 4xx from your tracker means the request reached it but
+    the tracker rejected the parameters.
+  </Accordion>
+</AccordionGroup>

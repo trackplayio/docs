@@ -1,0 +1,117 @@
+---
+title: "Customer 360"
+description: "Everything TrackPlay knows about one viewer on one page: who they are, what they watched, and whether they already bought something else of yours."
+icon: "id-card"
+---
+
+Click any viewer from Hot Leads, All Viewers, or a session, and you land on their 360
+profile. It is the single page that answers "who is this person and what have they done"
+without opening five tabs to piece it together.
+
+## What is on the page
+
+The profile reads top to bottom, most identifying information first, most granular
+behavior last.
+
+<Steps>
+  <Step title="Identity and reachability">
+    Name if known, otherwise "Anonymous viewer." Below it, the same three-state
+    reachability strip described in [Hot leads](/audience/hot-leads): reachable by email
+    or phone, known but with no channel, or anonymous.
+  </Step>
+  <Step title="First-touch attribution">
+    The source that brought this person in the first time TrackPlay ever saw them: the ad,
+    the affiliate, the campaign, the landing page.
+  </Step>
+  <Step title="Lead score">
+    The same 0 to 100 score and tier from Hot Leads, computed from this person's
+    strongest session. If they have already converted, the card says so and shows the
+    score for reference rather than implying they still need chasing.
+  </Step>
+  <Step title="Cross-workspace panel">
+    Rendered only when there is a match. See below.
+  </Step>
+  <Step title="Video engagement">
+    Every video this person has touched, with watch depth per video.
+  </Step>
+  <Step title="Custom events">
+    Any server-to-server events you sent that landed on this person's identity: a lead
+    form, a quiz completion, an upsell view.
+  </Step>
+  <Step title="Identity signals">
+    The raw list of identifiers linked to this profile in this workspace, and where each
+    one came from.
+  </Step>
+  <Step title="Sessions and conversions">
+    Every session this person opened, and every sale credited to them, up to 100 rows,
+    newest first.
+  </Step>
+</Steps>
+
+## "Also your customer in…"
+
+If you run more than one workspace under the same billing account, this is the panel
+that catches a repeat buyer before you pitch them your Basic offer while they already own
+your Premium offer.
+
+It appears only when TrackPlay finds a match, and only checks **your own other
+workspaces**, never anyone else's account. The match runs on exact identity: `email_hash`,
+`email_md5`, `phone_e164`, `phone_sha256`, `phone_md5`, or the cross-device cookie
+(`device_global`). It never matches on a workspace-scoped id, because those are not
+guaranteed to mean the same person across two different products.
+
+<Note>
+  If your account owns only one workspace, this panel never queries anything. There is
+  nothing to cross-reference.
+</Note>
+
+Each row shows the other workspace, what they bought there, the revenue, how much they
+watched, and when. The copy on the panel says exactly what it is and is not: *"Same
+person, your other workspaces under this billing account. A previous purchase you can act
+on."*
+
+## Session stories
+
+Click through to any session and you get its full story: a readable, second-by-second
+account of one visit, not a raw event dump.
+
+<AccordionGroup>
+  <Accordion title="Session facts, collapsed">
+    Country, city, device, browser, and referrer sit behind a collapsed disclosure at the
+    top. The page opens on behavior, because that is what you came to read; the where and
+    what device are reference material you expand when you need them.
+  </Accordion>
+  <Accordion title="System events, hidden by default">
+    Player-internal events (heartbeats, buffering signals, and the like) are hidden until
+    you ask for them. Toggling them on shows the full technical stream; off shows only
+    what the viewer actually did.
+  </Accordion>
+  <Accordion title="Repeats folded">
+    A viewer who pauses and resumes five times in ten seconds does not need five identical
+    lines. Bursts of the same event are collapsed by default into one line, with an
+    "Expand repeats" toggle if you want the raw count.
+  </Accordion>
+  <Accordion title="Per-video breakdown">
+    If the session touched more than one video, each gets its own row with its own watch
+    depth, its own stats, and its own expandable timeline.
+  </Accordion>
+</AccordionGroup>
+
+### Related visits
+
+At the bottom of a session story, a "related visits" table shows this viewer's other
+sessions, but which sessions it shows depends on how much TrackPlay knows:
+
+- If the session resolved to a **profile**, the table shows every session that profile
+  ever opened in this workspace, across every device.
+- If it did not resolve to a profile, the table falls back to sessions from the **same
+  device only**.
+
+Neither mode crosses workspaces. That is what the cross-workspace panel on the 360
+profile is for, and it is a separate mechanism from related visits.
+
+<Note>
+  A profile connects a buyer to a viewer. It does not, on its own, credit a sale to a
+  particular play. See [how a sale finds its video](/identity/overview#how-a-sale-finds-its-video)
+  for how attribution actually works.
+</Note>

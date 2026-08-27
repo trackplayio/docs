@@ -13,8 +13,15 @@ Connect your JVZoo vendor account to TrackPlay to automatically track affiliate 
 1. Go to **Integrations** → find **JVZoo** → click **Connect**
 
 ### Step 2: Configure
-1. Select the tracking parameter (`aff_sub`, `aff_sub2`, `aff_sub3`, `aff_sub4`, or `aff_sub5`)
+1. Select the passthrough key: `session_id` or `tp_session`
 2. Click **Save & Verify**
+
+<Note>
+  JVZoo carries the session in its passthrough blob (`cvendthru`), not in an affiliate
+  sub-parameter. `session_id` and `tp_session` are the only two keys TrackPlay reads back
+  out of it. Anything else means the sale posts back without a session and is credited as
+  organic, with no error shown.
+</Note>
 
 ### Step 3: Add IPN URL and Verify
 1. Copy the IPN URL from the setup modal

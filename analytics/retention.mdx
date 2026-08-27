@@ -1,0 +1,143 @@
+---
+title: "Retention"
+description: "The second-by-second curve of who kept watching, built from each session's furthest point, with the moments that mattered marked on top of it."
+icon: "chart-area"
+---
+
+Play counts and average watch time never tell you which second lost the sale. The
+Retention curve does: one line, built from where every session actually stopped, with
+your CTAs, your Pitch, and your conversions drawn on top of it.
+
+Open a video and click **Retention**.
+
+## The curve
+
+TrackPlay buckets every session into fixed 5-second windows of the video's timeline, by
+that session's **furthest point reached**, not by how long it watched or whether it
+rewound. A viewer who skipped ahead to 2:00 and never went back still counts at 2:00.
+
+The curve is cumulative: bucket by bucket, from the end of the video backward, it counts
+every session that reached at least that point. That cumulative count is then scaled
+against its own peak, the count at 0:00, so the curve always starts at 100%.
+
+<Note>
+  **Retention reads as relative to your own peak, not as a percentage of total plays.**
+  If 2% of sessions never produced a single progress tick (a page view with no play,
+  for instance), the curve does not know about them: it starts at 100% at the count it
+  actually has data for at 0:00, and every later point is relative to that.
+</Note>
+
+<Warning>
+  **The plain "All viewers" curve, with no cohort and no filter chip active, is not
+  scoped to the date range picker.** It reads all-time from the underlying progress
+  data. The moment you select a cohort (Buyers vs non-buyers, Buyers only) or apply any
+  attribution filter chip, the curve becomes properly bounded by your selected date
+  range, because those paths carry the date window with them. If you are comparing a
+  specific period, select a cohort or a filter chip rather than reading the default
+  curve.
+</Warning>
+
+## Hover for detail
+
+Move across the curve and a panel updates with, for every line on the chart: the time,
+the retention percentage, the raw viewer count behind it, and how far that point has
+dropped from the series' own peak (shown once the drop passes a tenth of a point).
+Hovering also seeks the preview player next to the chart to that same second, so you can
+watch what is happening at the point you are reading.
+
+## Drag to zoom and loop
+
+Drag across a span of the timeline to zoom the chart into it. TrackPlay rescales both
+axes to the visible data and starts the preview player at the start of your selection,
+looping it back to that start every time it reaches the end of the selection. This is a
+local, in-browser loop of the preview clip next to the chart. It does not change any
+setting on the live player your viewers see. Click Reset to return to the full curve.
+
+## Cohorts
+
+Three ways to view the same curve, plus a fourth that appears only when comparing videos:
+
+| Cohort | Shows |
+| --- | --- |
+| **All viewers** | Every session, the default view. |
+| **Buyers vs non-buyers** | Two overlaid curves, split by whether the session converted. |
+| **Buyers only** | The buyer curve alone, isolated. |
+
+A session counts as a buyer when it has a real, non-deleted conversion recorded against
+this video. If your selected period has zero buyers, TrackPlay disables the buyer-based
+views with a note explaining why, rather than plotting an empty line.
+
+<Tip>
+  Overlay buyers against non-buyers and look for the point where the two lines separate.
+  That is the moment your video sells. Whatever happens right before it is worth
+  protecting from every future edit.
+</Tip>
+
+## Conversion density
+
+A row of bars along the bottom of the chart shows where your buyers' watching actually
+maxed out: each bar is a count of buyer sessions whose furthest point landed in that
+5-second window. Unlike the curve above it, this is not cumulative. It is a plain
+histogram of buyers' stopping points, so a tall bar marks a real cluster of purchases
+tied to that moment, not everyone who watched past it.
+
+## Markers: measurements versus annotations
+
+Three kinds of markers sit on the timeline, and they answer two different kinds of
+questions.
+
+<AccordionGroup>
+  <Accordion title="The Pitch marker: a measurement">
+    The Pitch marker is the median of a dedicated event, `pitch-time-reached`, fired once
+    per session by the player when it crosses your configured Pitch Time. TrackPlay takes
+    the exact median of every session's reported pitch time and draws one line at that
+    second. This is a measurement of actual viewer behavior. It requires traffic to
+    exist, and it moves as your audience's viewing pattern moves.
+  </Accordion>
+  <Accordion title="CTA markers: also measured, with two counts each">
+    Each CTA gets a numbered marker at the median second it appeared, alongside two
+    counts: how many sessions it was **shown** to, and how many **clicked** it. A CTA
+    configured on the video but never yet shown to anyone still appears on the timeline,
+    at zero, so you can see it is wired up correctly before traffic proves it out.
+  </Accordion>
+  <Accordion title="Timed-event markers: annotations, not measurements">
+    Named markers for your configured timed events are read directly from the video's
+    own settings, not computed from traffic. TrackPlay draws them at the position your
+    configuration says they should be, whether that video has one session or none. This
+    is the opposite of the Pitch marker: it is true by definition, not by measurement. A
+    brand-new video with a timed event configured and zero plays will still show that
+    marker exactly where you placed it. The chart itself only renders once the video has
+    at least one session with playback data, so on a genuinely empty video you will see
+    an empty state instead of a chart carrying nothing but annotations.
+  </Accordion>
+</AccordionGroup>
+
+## Comparing by device, orientation, or source
+
+Break the curve into segments instead of one line, by **device**, **orientation**, or
+**traffic source**. TrackPlay ranks segments by session volume and draws up to 5,
+disclosing how many smaller segments and sessions were left out rather than hiding them
+silently. A faint dashed baseline shows the total curve behind every segment for
+reference.
+
+<Note>
+  Orientation is the one dimension where a session can land in two segments at once: a
+  viewer who rotates their phone mid-playback appears in both portrait and landscape.
+  TrackPlay explains this on the chart itself when it happens, rather than letting the
+  segment counts silently fail to add up to the total.
+</Note>
+
+## Overlaying multiple videos
+
+Click **Add Video** to bring another video's retention curve onto the same chart, up to
+7 at once, each in its own color. Every overlaid video uses the same cohort and date
+range as the one you are viewing, so the comparison stays apples to apples. This mode and
+segment comparison are mutually exclusive: turn one on and the other's controls step
+aside.
+
+## CSV export
+
+Export writes one row per 5-second bucket: the time, then a Users and a Retention %
+column for the main curve, followed by the same pair of columns for every segment or
+every overlaid video currently on the chart. Nothing is re-queried for the export. It is
+built from exactly what the chart is already showing you.

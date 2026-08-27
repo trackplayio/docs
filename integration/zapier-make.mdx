@@ -1,0 +1,120 @@
+---
+title: "Zapier & Make"
+description: "Send a new lead, conversion or milestone straight into a Zap or a Make scenario, no code required."
+icon: "bolt"
+sidebarTitle: "Zapier & Make"
+---
+
+Connect a video event to anything Zapier or Make can reach: a spreadsheet, a Slack
+message, an SMS, your own CRM if it is not ActiveCampaign or GoHighLevel. Both run on the
+same signed webhook machinery documented on the [Webhooks](/integration/webhooks) page.
+
+## Zapier
+
+Zapier subscribes and unsubscribes itself. You never copy a webhook URL by hand.
+
+<Steps>
+  <Step title="Mint an API token">
+    In TrackPlay, go to **Settings → API tokens** and create one with the `webhooks:write`
+    scope. See [Authentication](/api-reference/authentication).
+  </Step>
+  <Step title="Start the Zap">
+    In Zapier, search for **TrackPlay** as your trigger app.
+  </Step>
+  <Step title="Connect the account">
+    Paste the token into the **API Key** field on Zapier's connection screen.
+  </Step>
+  <Step title="Pick a trigger">
+    Choose one of the triggers below.
+  </Step>
+  <Step title="Test the trigger">
+    Zapier pulls a sample payload to build your field mapping. If no live event has fired
+    yet, it uses a representative sample instead of failing the setup.
+  </Step>
+</Steps>
+
+Zapier's REST-hook subscribe call creates a normal TrackPlay webhook subscription scoped
+to that one trigger, with its own signing secret. Turning off or deleting the Zap removes
+it the same way deleting any other webhook would.
+
+### Available triggers
+
+| Trigger | Fires when |
+| --- | --- |
+| New Lead | A viewer submits a lead-capture form on a video |
+| New Conversion | A sale is attributed to a video |
+| Play Milestone Reached | A viewer reaches 25%, 50%, 75% or 100% of a video |
+| Split Test Winner Declared | A winning variation is declared for an A/B test |
+| CTA Clicked | A viewer clicks a call-to-action in a video |
+| Video Viewed | A video is loaded or started by a viewer |
+
+Each trigger maps 1:1 to a TrackPlay webhook event. New Conversion is `conversion.created`,
+Play Milestone Reached is `play.milestone`, and so on. See [Webhooks](/integration/webhooks#events)
+for the full event list, including two that have no Zapier trigger yet: `lead.hot` and
+`lead.known_customer`.
+
+<Tip>
+  Every event carries the same envelope: `id`, `event`, `workspace_id`, `created_at`, and
+  a `data` object specific to the trigger. Use Zapier's own field-mapping screen after the
+  test step to see exactly which `data` fields your trigger sends.
+</Tip>
+
+## Make
+
+Make does not have a native TrackPlay app. Use its **Webhooks** module against a
+TrackPlay webhook subscription.
+
+<Steps>
+  <Step title="Add a Custom Webhook module">
+    In your Make scenario, add **Webhooks → Custom webhook** and copy the URL Make gives
+    you.
+  </Step>
+  <Step title="Create the webhook in TrackPlay">
+    Go to **Settings → Webhooks**, click **New webhook**, and paste Make's URL. Pick the
+    events you want, or **All events**.
+  </Step>
+  <Step title="Save the signing secret">
+    Shown once. Copy it if you plan to verify the `X-Trackplay-Signature` header (see
+    below).
+  </Step>
+  <Step title="Send a test">
+    Click **Send test** in TrackPlay, then **Run once** in Make to capture the payload
+    shape for the rest of your scenario.
+  </Step>
+</Steps>
+
+<Note>
+  Make sees the event before your webhook secret has ever mattered: subscribing and
+  testing works with no verification at all. Verify the signature only if your scenario
+  needs to trust that a payload really came from TrackPlay, not only that something posted
+  to the URL. The header format and the HMAC steps are on the
+  [Webhooks](/integration/webhooks#verify-the-signature) page.
+</Note>
+
+## When it does not work
+
+<AccordionGroup>
+  <Accordion title="Zapier: 'Invalid API Key'">
+    The token needs the `webhooks:write` scope specifically. A token minted for
+    `videos:read` or another scope authenticates for other API calls but is rejected here.
+  </Accordion>
+  <Accordion title="Zap or scenario never triggers">
+    Confirm the event has actually happened since you connected. A play or a sale from
+    before the Zap was turned on does not replay. For New Conversion specifically, confirm
+    the underlying cart integration or Conversions API call shows conversions landing at
+    all; a Zap cannot trigger on an event TrackPlay never recorded.
+  </Accordion>
+  <Accordion title="Make scenario stopped receiving data">
+    Check **Settings → Webhooks → Recent deliveries** in TrackPlay for the subscription's
+    HTTP status. A Make webhook URL that expired or was regenerated on Make's side returns
+    a 404 that TrackPlay logs and keeps retrying with backoff for up to 8 attempts before
+    marking that one delivery dead. The subscription itself stays active regardless, so
+    fix the URL in TrackPlay (delete the old webhook, add the new one Make gives you) as
+    soon as you notice, rather than waiting for TrackPlay to notice for you.
+  </Accordion>
+  <Accordion title="Zapier trigger disappeared after disconnecting and reconnecting">
+    Reconnecting mints a fresh REST-hook subscription; the old one is orphaned in
+    TrackPlay's webhook list until Zapier's own cleanup unsubscribes it, or you remove it
+    by hand from **Settings → Webhooks**.
+  </Accordion>
+</AccordionGroup>

@@ -13,13 +13,13 @@ Need to integrate events? See the [Quick Start Guide](/get-started/quick-start) 
 ## How Timed Events Work
 
 Timed events are completely custom events that you configure in your TrackPlay dashboard. You define:
-- **Event name** (any name you choose - e.g., "cta", "offer", "milestone")
+- **Event name** (any name you choose, for example "cta", "offer", "milestone")
 - **Trigger time** (specific time or percentage)
 - **Call frequency** (once per session or multiple times)
 - **Returning user behavior** (different events for subsequent visits)
 
 <Warning>
-**Important**: You must use the exact event name you configured in your dashboard settings. The examples below are just illustrations - replace them with your actual event names.
+**Important**: You must use the exact event name you configured in your dashboard settings. The examples below are illustrations. Replace them with your actual event names.
 </Warning>
 
 ## Event Structure
@@ -122,7 +122,7 @@ player.on('cta', function (event) {
 });
 ```
 
-**Event:** `cta_subsequent` (returning visitors - automatically generated)
+**Event:** `cta_subsequent` (returning visitors, generated automatically)
 
 **Data:**
 ```javascript
@@ -205,7 +205,7 @@ All timed events include these fields:
 2. **Plan your timing**: Consider the user experience when setting trigger times
 3. **Handle gracefully**: Always check if elements exist before manipulating them
 4. **Test both scenarios**: Test both first-time and returning user flows
-5. **Use event data**: Leverage the time and percentage data for better tracking
+5. **Use event data**: Read the time and percentage data for better tracking
 
 ## Related Events
 

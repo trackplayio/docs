@@ -113,3 +113,43 @@ override before the button works.
   Overriding the guardrail is sometimes the right call: a launch ends, a deadline lands.
   But you are choosing on a coin flip. Know that you are doing it.
 </Note>
+
+## Letting TrackPlay declare it for you
+
+A test can also finish itself. **Automated winner selection** is off by default and is set
+per test, so nothing is ever decided for you unless you switch it on for that test.
+
+With it on, TrackPlay checks the test **once an hour** and declares a winner only when
+every one of these is true:
+
+<Steps>
+  <Step title="The result is statistically significant">
+    At the Bonferroni-corrected threshold described above.
+  </Step>
+  <Step title="The effect is large enough to act on">
+    The same practical-significance bar a manual declaration has to clear.
+  </Step>
+  <Step title="Each arm has enough traffic">
+    The minimum per-variant sample is met.
+  </Step>
+  <Step title="The test has run long enough">
+    Your **minimum duration** in days, if you set one. This exists so a test cannot be
+    called on the first favourable hourly check.
+  </Step>
+  <Step title="The observed p-value clears your threshold">
+    Your **decision threshold**, 0.95 by default, which means the observed p-value must be
+    0.05 or lower. Not the configured confidence level: the p-value the data actually
+    produced.
+  </Step>
+</Steps>
+
+When it fires, the test is marked completed, the winning arm goes to 100% of traffic, and
+every other arm goes to 0%. The result is recorded as automated, so you can always tell
+which tests you called and which the math called. Add notification emails to the test and
+TrackPlay tells you it happened.
+
+<Warning>
+  This moves live traffic without asking. The guardrails above are real and every one of
+  them must pass, but the outcome is still a traffic change you did not click. Leave it off
+  if you want to make that call yourself.
+</Warning>

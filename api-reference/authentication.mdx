@@ -35,43 +35,51 @@ rejected. It cannot be talked into doing more than it was issued for.
 
 ## Scopes
 
+Six scopes are enforced on live endpoints. Each one below names exactly what it unlocks.
+
 <ParamField path="events:write" type="write-only">
   Send events to the [Custom Events API](/api-reference/custom-events). Write-only: it
   cannot read anything back, which makes it the right token to hand to a third-party
-  backend.
+  backend. This is the only scope the events host checks.
 </ParamField>
 
 <ParamField path="conversions:write" type="write-only">
   Send sales to the [Conversions API](/api-reference/conversions).
 </ParamField>
 
-<ParamField path="conversions:read" type="read-only">
-  Read recorded conversions.
-</ParamField>
-
 <ParamField path="analytics:read" type="read-only">
-  Read analytics and reporting data.
+  Read the [Analytics API](/api-reference/analytics): summary, retention, raw events and
+  conversions, plus queueing and polling exports.
 </ParamField>
 
 <ParamField path="videos:read" type="read-only">
-  List and read videos.
+  List and read videos, their settings, their embed code and their player config. It also
+  covers reading playlists **and workspace metadata**, which has no scope of its own.
 </ParamField>
 
 <ParamField path="videos:write" type="write-only">
-  Create, update and delete videos.
+  Create, update, duplicate and delete videos. Save a settings draft, deploy it, and
+  restore a past version. Upload media. Replace captions, chapters, AI segments and CTA
+  cards. Create and edit playlists.
 </ParamField>
 
 <ParamField path="webhooks:write" type="write-only">
-  Manage webhook subscriptions and Zapier hooks.
+  Manage webhook subscriptions, send test deliveries, and drive the Zapier REST hooks.
 </ParamField>
 
-<ParamField path="integrations:read" type="read-only">
-  Read integration configuration.
-</ParamField>
+### Reserved scopes
 
-<ParamField path="workspace:read" type="read-only">
-  Read workspace details.
-</ParamField>
+Three more scopes can be ticked when you mint a token: `conversions:read`,
+`integrations:read`, and `workspace:read`.
+
+<Warning>
+  **No endpoint checks any of them today.** A token minted with only a reserved scope is
+  accepted as a valid token and then rejected by every endpoint you point it at, because
+  none of them is the scope that endpoint requires.
+
+  They are reserved for read endpoints that do not exist yet. Do not build against them.
+  To read workspace metadata today, use `videos:read`.
+</Warning>
 
 ## Send the token
 
@@ -124,10 +132,13 @@ scopes.
     names the scope in `required`. Mint a new token with it; you cannot add a scope to an
     existing token.
   </Accordion>
-  <Accordion title="503: AUTH_UNAVAILABLE">
+  <Accordion title="503: AUTH_UNAVAILABLE (events host only)">
     Token verification is temporarily unavailable. **This is not a rejection of your
     token.** We fail closed rather than let an outage authenticate anyone, so retry
     shortly rather than re-issuing credentials.
+
+    This code is returned by the events host (`https://e.trackplay.io`). The app API on
+    `https://app.trackplay.io` does not use it.
   </Accordion>
 </AccordionGroup>
 

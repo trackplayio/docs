@@ -12,9 +12,9 @@ integrations](/integration/configuration), or when you want to record a sale you
 never sees: a phone close, a manual invoice, an upsell in your own checkout.
 
 <Note>
-  If you sell through ClickBank, BuyGoods, Digistore24, ThriveCart, SamCart, WarriorPlus
-  or JVZoo, **you do not need this API.** Connect the integration and the postback is
-  wired for you.
+  If you sell through ClickBank, BuyGoods, Digistore24, Kiwify, WarriorPlus, JVZoo or
+  ElasticFunnels, **you do not need this API.** Connect the integration and the postback
+  is wired for you.
 </Note>
 
 ## Send a sale
@@ -101,7 +101,7 @@ Read the session from the player and carry it through your checkout:
 ```js
 const sessionCode = window.trackplay.getSessionId();
 // put it in a hidden field, your cart's custom/passthrough param, whatever survives to
-// your backend — then send it back here.
+// your backend, then send it back here.
 ```
 
 <Tip>

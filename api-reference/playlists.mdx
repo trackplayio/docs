@@ -1,0 +1,288 @@
+---
+title: "Playlists API"
+description: "Turn a video into a playlist container and manage its items, keyed by video code, not by id."
+icon: "list-ol"
+sidebarTitle: "Playlists API"
+---
+
+A playlist is not a separate resource. It is `playlist_options`, a JSON column, on a
+video row: the video you enable it on becomes the playlist's container, and its
+`{playlist}` id in every URL below is that video's own numeric id, the same id you
+would use on [`GET /v1/videos/{video}`](/api-reference/videos#get-a-video). Items in the
+playlist reference other videos, but by their `video_code` string, not their numeric
+id.
+
+<Warning>
+  `{playlist}` and `{video}` in the item routes below are two different kinds of
+  identifier. `{playlist}` is always a numeric video id. `{video}` in `/playlists/
+  {playlist}/videos/{video}` is always a `video_code` string. Passing a numeric id
+  where a `video_code` is expected does not resolve to anything and returns a 404.
+</Warning>
+
+Reading needs `videos:read`. Everything that writes needs `videos:write`.
+
+## List and read
+
+```bash curl
+curl https://app.trackplay.io/api/v1/playlists \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{
+  "current_page": 1,
+  "data": [
+    {
+      "video_id": 512,
+      "video_code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34",
+      "title": "Onboarding Course",
+      "playback_mode": "course",
+      "playlist_code": "onboarding",
+      "item_count": 6,
+      "auto_advance": true,
+      "loop": false,
+      "lesson_navigation": "sidebar"
+    }
+  ],
+  "per_page": 50,
+  "total": 3
+}
+```
+
+`GET /v1/playlists/{playlist}` returns the same shape for one playlist, wrapped in
+`{"playlist": {...}}`. `GET /v1/playlists/{playlist}/videos` returns its items:
+`{"items": [...], "total": 6}`.
+
+<Note>
+  `playlist_chrome` is a real, writable field (see below), but it does not appear in
+  any of the three read responses above. If you set it, expect it to be silently
+  absent when you read the playlist back: not `null`, absent entirely.
+</Note>
+
+## Enable a playlist
+
+Turns an existing video into a playlist container.
+
+<ParamField body="video_id" type="integer" required>
+  The video to enable a playlist on.
+</ParamField>
+<ParamField body="playback_mode" type="string" default="linear">
+  `linear` or `course`.
+</ParamField>
+<ParamField body="playlist_code" type="string">
+  Max 128 characters. Your own identifier for the playlist.
+</ParamField>
+<ParamField body="items" type="object[]">
+  Starting items. Each is `{"video_code": "...", "title": "..."}`. You can only seed
+  items here, at creation. After this call, manage items with the add/update/remove
+  endpoints below, `PATCH /v1/playlists/{playlist}` does not accept `items`.
+</ParamField>
+<ParamField body="auto_advance" type="boolean" default="true">
+  Whether the player moves to the next item automatically.
+</ParamField>
+<ParamField body="loop" type="boolean" default="false">
+</ParamField>
+<ParamField body="playlist_chrome" type="string">
+  `rail` or `button`.
+</ParamField>
+
+```bash curl
+curl -X POST https://app.trackplay.io/api/v1/playlists \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_id": 512,
+    "playback_mode": "course",
+    "playlist_code": "onboarding",
+    "items": [{ "video_code": "aa11bb22-...", "title": "Lesson 1: Welcome" }]
+  }'
+```
+
+```json 201 Created
+{
+  "playlist": {
+    "video_id": 512,
+    "video_code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34",
+    "title": "Onboarding Course",
+    "playback_mode": "course",
+    "playlist_code": "onboarding",
+    "item_count": 1,
+    "auto_advance": true,
+    "loop": false,
+    "lesson_navigation": "sidebar"
+  }
+}
+```
+
+<Tip>
+  Calling this again on a video that already has a playlist does not fail. It
+  re-enables it (setting `enabled` back to true if it was disabled) and applies
+  whatever fields you send, leaving the rest as they were. This is also how you turn a
+  disabled playlist back on.
+</Tip>
+
+## Update a playlist
+
+<ParamField path="playlist" type="integer" required>
+  The video's numeric id.
+</ParamField>
+<ParamField body="playback_mode" type="string" />
+<ParamField body="playlist_code" type="string" />
+<ParamField body="auto_advance" type="boolean" />
+<ParamField body="auto_advance_delay_ms" type="integer">
+  0 to 30000. Only settable here, not at creation.
+</ParamField>
+<ParamField body="loop" type="boolean" />
+<ParamField body="lesson_navigation" type="string">
+  `sidebar`, `next-button`, `both`, or `none`. Only settable here, not at creation.
+</ParamField>
+<ParamField body="playlist_chrome" type="string">
+  `rail` or `button`.
+</ParamField>
+
+```bash curl
+curl -X PATCH https://app.trackplay.io/api/v1/playlists/512 \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "lesson_navigation": "both", "auto_advance_delay_ms": 3000 }'
+```
+
+```json 200 OK
+{ "playlist": { "video_id": 512, "playback_mode": "course", "lesson_navigation": "both", "...": "..." } }
+```
+
+Only the fields you send change. There is no `items` field here: manage items with the
+endpoints below.
+
+## Disable a playlist
+
+```bash curl
+curl -X DELETE https://app.trackplay.io/api/v1/playlists/512 \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{ "deleted": true }
+```
+
+This is a soft disable. It sets `enabled` to false; every item stays in place. The
+playlist stops appearing in `GET /v1/playlists` and its chrome stops showing in the
+player, but nothing is deleted. Enable it again with `POST /v1/playlists`.
+
+## Manage items
+
+Items are keyed by `video_code`, the code of the video being added as an item, not by
+any id of the item itself.
+
+### Add an item
+
+<ParamField path="playlist" type="integer" required>
+  The playlist's video id.
+</ParamField>
+<ParamField body="video_code" type="string" required>
+  Max 64 characters. Not validated against real videos: any string is accepted and
+  stored as-is.
+</ParamField>
+<ParamField body="title" type="string" />
+<ParamField body="lesson_label" type="string" />
+<ParamField body="duration_s" type="integer" />
+<ParamField body="thumb_url" type="string">
+  A valid URL, max 2048 characters.
+</ParamField>
+
+```bash curl
+curl -X POST https://app.trackplay.io/api/v1/playlists/512/videos \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "video_code": "bb33cc44-...", "title": "Lesson 2: Setup", "duration_s": 340 }'
+```
+
+```json 201 Created
+{ "items": [ { "video_code": "aa11bb22-...", "title": "Lesson 1: Welcome" }, { "video_code": "bb33cc44-...", "title": "Lesson 2: Setup", "duration_s": 340 } ] }
+```
+
+<Warning>
+  Adding a `video_code` that is already in the playlist does not merge or reject it. It
+  appends a second entry with the same code. Check the existing list first if you need
+  to guarantee one entry per video.
+</Warning>
+
+### Update an item
+
+`PATCH /v1/playlists/{playlist}/videos/{video}`, where `{video}` is the item's
+`video_code`.
+
+<ParamField path="playlist" type="integer" required>
+  The playlist's video id.
+</ParamField>
+<ParamField path="video" type="string" required>
+  The item's `video_code`, not a numeric id.
+</ParamField>
+<ParamField body="title" type="string" />
+<ParamField body="lesson_label" type="string" />
+<ParamField body="duration_s" type="integer" />
+<ParamField body="thumb_url" type="string" />
+
+```bash curl
+curl -X PATCH "https://app.trackplay.io/api/v1/playlists/512/videos/bb33cc44-..." \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "duration_s": 355 }'
+```
+
+```json 200 OK
+{ "items": [ { "video_code": "aa11bb22-...", "title": "Lesson 1: Welcome" }, { "video_code": "bb33cc44-...", "title": "Lesson 2: Setup", "duration_s": 355 } ] }
+```
+
+If `video_code` does not match any current item, this returns `404 {"error": {"code":
+"NOT_FOUND", "message": "Item not found."}}`, unlike remove, below.
+
+### Remove an item
+
+```bash curl
+curl -X DELETE "https://app.trackplay.io/api/v1/playlists/512/videos/bb33cc44-..." \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{ "items": [ { "video_code": "aa11bb22-...", "title": "Lesson 1: Welcome" } ] }
+```
+
+<Note>
+  Removing a `video_code` that is not in the playlist is not an error. It returns `200`
+  with the item list unchanged. Update 404s on an unknown code; remove does not.
+</Note>
+
+## Enum reference
+
+| Field | Values |
+| --- | --- |
+| `playback_mode` | `linear`, `course` |
+| `playlist_chrome` | `rail`, `button` |
+| `lesson_navigation` | `sidebar`, `next-button`, `both`, `none` |
+
+## Errors
+
+<AccordionGroup>
+  <Accordion title="401: INVALID_TOKEN">
+    The token is wrong, expired, or revoked.
+  </Accordion>
+  <Accordion title="403: INSUFFICIENT_SCOPE">
+    Reads need `videos:read`. Everything else needs `videos:write`.
+  </Accordion>
+  <Accordion title="404, video not found">
+    No video with that `{playlist}` id in your workspace. Laravel's default body:
+    `{"message": "No query results for model [App\\Models\\WorkspaceVideo] 512"}`.
+  </Accordion>
+  <Accordion title="404: NOT_FOUND, item not found">
+    Only from `PATCH .../videos/{video}`: `{"error": {"code": "NOT_FOUND", "message":
+    "Item not found."}}`.
+  </Accordion>
+  <Accordion title="422">
+    Validation failed. Laravel's default shape, e.g. an invalid `playback_mode` or a
+    `thumb_url` that is not a URL.
+  </Accordion>
+  <Accordion title="429">
+    Rate limited. Reads: 600 per minute per token. Writes: 60 per minute per token.
+  </Accordion>
+</AccordionGroup>

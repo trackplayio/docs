@@ -28,16 +28,52 @@ Export it, send it through webhooks, or query the API. Your attribution data is 
 
 ## Events
 
+These are the events that are really delivered.
+
+**Viewer behaviour**
+
 | Event | Fires when |
 | --- | --- |
-| `conversion.created` | A sale is recorded, from a cart postback or the API |
-| `lead.captured` | Someone submits a lead form |
+| `video.viewed` | A video is played |
 | `play.milestone` | A viewer passes a watch milestone |
 | `cta.clicked` | A CTA is clicked |
-| `video.viewed` | A video is played |
-| `video.created` / `video.updated` / `video.deleted` | A video changes |
-| `split_test.winner_declared` | A split test gets a winner |
+| `lead.captured` | Someone submits a lead form |
+| `lesson.completed` | A viewer finishes a lesson in a playlist |
+| `conversion.created` | A sale is recorded, from a cart postback or the API |
+
+**Lead signals**
+
+| Event | Fires when |
+| --- | --- |
+| `lead.hot` | A session crosses the hot lead-score threshold without converting |
+| `lead.known_customer` | A hot lead is recognised as a previous customer in another of your workspaces |
+
+**Library and admin**
+
+| Event | Fires when |
+| --- | --- |
+| `video.created` | A video is created, in the dashboard or through the API |
+| `video.uploaded` | An upload finishes and the media is attached |
+| `video.settings.deployed` | Settings are deployed and the player is recompiled |
+| `video.deleted` | A video is deleted |
+| `split_test.winner_declared` | A split test gets a winner, declared by you or automatically |
 | `webhook.test` | You clicked **Send test** |
+
+<Note>
+  `lead.hot` and `lead.known_customer` are delivered but are **not in the dashboard event
+  picker**. To receive them, subscribe to all events with `*`.
+</Note>
+
+<Warning>
+  Some names offered in the event pickers are never delivered. Nothing dispatches them, so
+  a subscription to any of these waits forever and never errors:
+
+  `video.updated`, `split_test.winner_chosen`, `conversion`, `play`, `ended`,
+  `lead_form.submitted`, `quiz.answered`, `playlist.ended`.
+
+  Use `video.settings.deployed` instead of `video.updated`, `split_test.winner_declared`
+  instead of `split_test.winner_chosen`, and `conversion.created` instead of `conversion`.
+</Warning>
 
 ## Verify the signature
 
@@ -66,7 +102,7 @@ function verify(rawBody, header, secret) {
     .update(`${parts.t}.${rawBody}`)
     .digest('hex');
 
-  // Constant-time compare — a plain === leaks the secret one byte at a time.
+  // Constant-time compare. A plain === leaks the secret one byte at a time.
   return crypto.timingSafeEqual(
     Buffer.from(expected),
     Buffer.from(parts.v1),

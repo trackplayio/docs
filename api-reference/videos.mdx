@@ -1,0 +1,299 @@
+---
+title: "Videos API"
+description: "List, read and manage the video resource that everything else in the API hangs off: settings, uploads and playlists all point back to a video id."
+icon: "film"
+sidebarTitle: "Videos API"
+---
+
+A video is the root object. Its settings, its embed code, its uploaded media, and (if
+it has one) its playlist all live under the id returned here. Start on this page, then
+follow the links out to [Video Settings](/api-reference/video-settings),
+[Uploads](/api-reference/uploads) and [Playlists](/api-reference/playlists) for the
+deeper flows.
+
+Reading needs a token with `videos:read`. Creating, changing or deleting a video needs
+`videos:write`. See [Authentication](/api-reference/authentication).
+
+## List videos
+
+<ParamField query="sort" type="string">
+  One of `id`, `title`, `code`, `created_at`, `updated_at`. Anything else is ignored and
+  the list falls back to `id`.
+</ParamField>
+<ParamField query="order" type="string" default="desc">
+  `asc` or `desc`.
+</ParamField>
+<ParamField query="per_page" type="integer" default="50">
+  Page size.
+</ParamField>
+
+```bash curl
+curl "https://app.trackplay.io/api/v1/videos?sort=created_at&order=desc&per_page=20" \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{
+  "current_page": 1,
+  "data": [
+    { "id": 512, "title": "New VSL", "code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34", "workspace_id": 41, "created_at": "2026-08-01T12:03:00Z", "updated_at": "2026-08-10T09:11:00Z" }
+  ],
+  "first_page_url": "https://app.trackplay.io/api/v1/videos?page=1",
+  "from": 1,
+  "last_page": 3,
+  "next_page_url": "https://app.trackplay.io/api/v1/videos?page=2",
+  "path": "https://app.trackplay.io/api/v1/videos",
+  "per_page": 20,
+  "to": 20,
+  "total": 57
+}
+```
+
+The list is deliberately slim: `id`, `title`, `code`, `created_at`, `updated_at`,
+`workspace_id`. Fetch a single video for everything else.
+
+## Get a video
+
+```bash curl
+curl https://app.trackplay.io/api/v1/videos/512 \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{
+  "video": {
+    "id": 512,
+    "code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34",
+    "workspace_id": 41,
+    "title": "New VSL",
+    "folder_id": null,
+    "tags": ["evergreen"],
+    "player_version": "v2",
+    "landscape_hls": "https://cdn.trackplay.io/.../playlist.m3u8",
+    "portrait_hls": null,
+    "landscape_thumb": "https://cdn.trackplay.io/.../thumb.jpg",
+    "portrait_thumb": null,
+    "script_url": "https://scripts.trackplay.io/9f2c1a7e....js",
+    "default_orientation": "landscape",
+    "style_options": { "...": "..." },
+    "playback_options": { "...": "..." },
+    "captions_options": { "...": "..." },
+    "chapters_options": { "...": "..." },
+    "playlist_options": { "...": "..." },
+    "created_at": "2026-08-01T12:03:00Z",
+    "updated_at": "2026-08-10T09:11:00Z"
+  }
+}
+```
+
+<Note>
+  This is the same "everything" payload the dashboard editor loads: every option group
+  the video carries, not the summary fields the list returns. The example above is
+  trimmed. For the settings alone, or the embed code alone, use the narrower endpoints
+  below instead of parsing this one.
+</Note>
+
+## Read settings, embed code and player config
+
+<ParamField path="video" type="integer" required>
+  The video's numeric id.
+</ParamField>
+
+<Tabs>
+  <Tab title="Settings">
+    `GET /v1/videos/{video}/settings` returns the option groups alone, under a
+    `settings` key: `{"settings": { "style_options": {...}, "playback_options": {...},
+    ... }}`. This is the same shape `POST .../draft` and `POST .../deploy` accept as a
+    payload. See [Video Settings](/api-reference/video-settings) for the full lifecycle.
+  </Tab>
+  <Tab title="Embed code">
+    `GET /v1/videos/{video}/embed` returns the ready-to-paste snippet plus the timed
+    events configured on it:
+    ```json
+    { "html": "<script src=\"https://scripts.trackplay.io/9f2c1a7e....js\" async></script>", "timed_events": [] }
+    ```
+  </Tab>
+  <Tab title="Player config">
+    `GET /v1/videos/{video}/config` returns the shape the embed loader itself consumes:
+    workspace and video codes, and the aspect ratio / padding for whichever
+    orientations have media:
+    ```json
+    {
+      "config": {
+        "workspace_code": "acme",
+        "video_code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34",
+        "landscape": { "w": 1920, "h": 1080, "padding": "56.3%", "aspectRatio": "1920 / 1080" },
+        "portrait": null
+      },
+      "timed_events_options": []
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Create a video
+
+A video created through the API is a shell: a title and, optionally, folder, tags and
+a starting player version. It has no media until you upload one (see
+[Uploads](/api-reference/uploads)) and no settings until you deploy some (see
+[Video Settings](/api-reference/video-settings)), unless you copy them from an
+existing video.
+
+<ParamField body="title" type="string" required>
+  Max 255 characters.
+</ParamField>
+<ParamField body="folder_id" type="integer">
+  Puts the video in an existing folder.
+</ParamField>
+<ParamField body="tags" type="string[]">
+  Each tag max 64 characters.
+</ParamField>
+<ParamField body="player_version" type="string" default="v2">
+  One of `v1`, `v2`, `1`, `2`.
+</ParamField>
+<ParamField body="copy_from" type="integer">
+  The id of another video in the same workspace. Copies its player version and all 18
+  option-group columns (style, playback, autoplay, progress, actions, pixels, continue
+  watching, turbo, timed events, user events, chapters, playlist, engagement, lead
+  form, notes, quiz, watch gate, cross-device resume) onto the new video, so it launches
+  configured instead of blank.
+</ParamField>
+
+<Warning>
+  An unknown `copy_from` id, or one from another workspace, is not an error. The video
+  is created anyway, with nothing copied. Read the new video back and check its
+  settings if you are relying on `copy_from` to have worked.
+</Warning>
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://app.trackplay.io/api/v1/videos \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "title": "New VSL", "player_version": "v2", "copy_from": 480 }'
+```
+
+```js Node
+await fetch('https://app.trackplay.io/api/v1/videos', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ title: 'New VSL', player_version: 'v2', copy_from: 480 }),
+});
+```
+
+</CodeGroup>
+
+```json 201 Created
+{
+  "video": {
+    "id": 512,
+    "code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34",
+    "workspace_id": 41,
+    "title": "New VSL",
+    "player_version": "v2",
+    "created_at": "2026-08-12T10:00:00Z",
+    "updated_at": "2026-08-12T10:00:00Z"
+  }
+}
+```
+
+**Side effect**: fires the `video.created` webhook, with `{"video": {"id", "code",
+"title"}}`. See [Webhooks API](/api-reference/webhooks-api) to subscribe.
+
+## Update title, folder or tags
+
+<ParamField body="title" type="string">
+  Max 255 characters.
+</ParamField>
+<ParamField body="folder_id" type="integer">
+  Pass `null` to move it out of its folder.
+</ParamField>
+<ParamField body="tags" type="string[]">
+  Replaces the tag list entirely. There is no add-one-tag call.
+</ParamField>
+
+```bash curl
+curl -X PATCH https://app.trackplay.io/api/v1/videos/512 \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "title": "New VSL (v2)", "tags": ["evergreen", "q3"] }'
+```
+
+```json 200 OK
+{ "video": { "id": 512, "title": "New VSL (v2)", "tags": ["evergreen", "q3"], "...": "..." } }
+```
+
+Every field is optional: send only what changed. This endpoint touches title, folder
+and tags only. It does not fire a webhook and does not touch settings, media or
+playlist state.
+
+## Duplicate a video
+
+```bash curl
+curl -X POST https://app.trackplay.io/api/v1/videos/512/duplicate \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 201 Created
+{ "video": { "id": 513, "title": "New VSL (v2) (copy)", "landscape_hls": null, "portrait_hls": null, "...": "..." } }
+```
+
+The copy takes the title (with " (copy)" appended), settings and player version. It
+does **not** take the media: both HLS URLs and both thumbnails come back null, because
+the copy needs its own upload. No webhook fires.
+
+## Delete a video
+
+```bash curl
+curl -X DELETE https://app.trackplay.io/api/v1/videos/512 \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+```json 200 OK
+{ "deleted": true }
+```
+
+Deleting a video also deletes its pending settings draft, if it has one, and fires the
+`video.deleted` webhook with `{"video_id": 512}`.
+
+## Webhooks fired from this resource
+
+| Call | Event | Payload |
+| --- | --- | --- |
+| Create | `video.created` | `{"video": {"id", "code", "title"}}` |
+| Delete | `video.deleted` | `{"video_id": <id>}` |
+| Upload complete | `video.uploaded` | see [Uploads](/api-reference/uploads) |
+| Deploy | `video.settings.deployed` | see [Video Settings](/api-reference/video-settings) |
+
+Update and duplicate fire nothing.
+
+## Errors
+
+<AccordionGroup>
+  <Accordion title="401: INVALID_TOKEN">
+    The token is wrong, expired, or revoked.
+  </Accordion>
+  <Accordion title="403: INSUFFICIENT_SCOPE">
+    Reads need `videos:read`. Create, update, duplicate and delete need `videos:write`.
+  </Accordion>
+  <Accordion title="404, two shapes">
+    `GET /v1/videos/{video}`, `.../settings`, `.../embed` and `.../config` return
+    `{"error": {"code": "NOT_FOUND", "message": "Video not found"}}`.
+
+    `PATCH`, `DELETE` and `.../duplicate` instead return Laravel's default model-not-found
+    body: `{"message": "No query results for model [App\\Models\\WorkspaceVideo] 512"}`.
+    Both mean the same thing: no video with that id in your workspace. Match on status
+    code (404), not on body shape, if you handle both call families in one client.
+  </Accordion>
+  <Accordion title="422">
+    Validation failed on create or update. Laravel's default shape: `{"message": "The
+    given data was invalid.", "errors": {"title": ["The title field is required."]}}`.
+  </Accordion>
+  <Accordion title="429">
+    Rate limited. Reads: 600 per minute per token. Writes: 60 per minute per token.
+  </Accordion>
+</AccordionGroup>

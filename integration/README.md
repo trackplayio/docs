@@ -1,88 +1,38 @@
-# TrackPlay Integrations Documentation
+# Integration docs
 
-This directory contains comprehensive user documentation for TrackPlay's integration and conversion tracking system.
+Not published. Mintlify builds only what `docs.json` lists, and this file is not in it.
+See the repo root `README.md` for how the docs are built and `STYLE.md` for the voice.
 
-## Documentation Structure
+## The one rule specific to this directory
 
-### Core Integration Guides
-- **[Overview](./overview.mdx)** - Introduction to TrackPlay integrations and how they work
-- **[Configuration](./configuration.mdx)** - Comprehensive setup and configuration guide
-- **[Conversion Tracking](./conversion-tracking.mdx)** - Deep dive into how conversion tracking works
+**Never write a cart's tracking-parameter list from memory, from another cart's page, or
+from the vendor's own documentation.** Take it from the app's single source of truth:
 
-### Platform-Specific Guides
-- **[Buygoods Integration](./buygoods.mdx)** - Complete setup guide for Buygoods
-- **[Clickbank Integration](./clickbank.mdx)** - Complete setup guide for Clickbank
-- **[ElasticFunnels Integration](./elasticfunnels.mdx)** - Guide for ElasticFunnels enhancement
+`trackplay-app/resources/js/views/Integrations/cartSettings.js`
 
-### Analytics and Reporting
-- **[Analytics Guide](./analytics.mdx)** - Understanding and using conversion analytics
-- **[Quick Start](./quick-start.mdx)** - Basic integration setup for new users
+That file holds `parameterOptions` per cart, and it is the app-side mirror of the
+receiver in `trackplay-events/src/services/carts/<cart>.js`. If the two disagree, the
+receiver wins and the app file is a bug.
 
-## Supported Integrations
+This matters more here than anywhere else in the docs. A wrong parameter name does not
+throw. The link is accepted, the sale completes, the postback arrives without a session,
+the conversion is filed as organic, and the integration keeps reading **Active**. The
+customer sees healthy dashboards and silently loses attribution on every sale. Every cart
+page except ElasticFunnels carried wrong values for months for exactly this reason.
 
-### Payment Processors
-1. **Buygoods** - E-commerce platform for digital products
-2. **Clickbank** - Digital marketplace and affiliate network
-3. **Digistore24** - Digital product marketplace (referenced but not fully implemented)
+The same file records which carts are `unverified` and hidden from the in-app catalogue.
+A cart the app refuses to show is a cart the docs must not tell people to set up. Check
+`resources/js/views/Integrations/integrations.js` (`SHIPPABLE_INTEGRATIONS`) before adding
+a page.
 
-### Enhancement Platforms
-1. **ElasticFunnels.io** - Funnel optimization that enhances other integrations
+## Second rule: the browser cannot report a conversion
 
-### AI & Media
-1. **[ElevenLabs & AI Segments](./elevenlabs-ai-segments.mdx)** - ElevenLabs API key and time-based personalized TTS in the player
+A sale completes on the cart's domain after the viewer has left the page, so the player
+is gone and no browser-side integration can ever see it. Do not document a conversion
+event on GTM, Segment, or any other client-side destination. This has been shipped wrong
+twice. Conversions arrive by cart postback or by webhook, never through the dataLayer.
 
-## Key Features Documented
+## Pages here
 
-### Automatic Tracking
-- Session ID generation for each video viewer
-- Automatic modification of purchase links and forms
-- Real-time parameter injection with tracking data
-
-### Conversion Capture
-- Comprehensive conversion data collection
-- Support for sales, refunds, and chargebacks
-- Customer and product information tracking
-- Geographic and device analytics
-
-### Security & Privacy
-- Encrypted data transmission (Clickbank)
-- Unique postback URLs for secure communication
-
-### Analytics & Reporting
-- Video-level and workspace-level analytics
-- Revenue metrics and conversion rates
-- Geographic and demographic insights
-- Cross-platform attribution
-
-## Integration Workflow
-
-1. **Activation** - Activate desired integrations in TrackPlay dashboard
-2. **Configuration** - Set tracking parameters and encryption keys
-3. **Postback Setup** - Configure payment processor postback URLs
-4. **Testing** - Verify tracking with test transactions
-5. **Monitoring** - Track performance through TrackPlay analytics
-
-## User Experience Focus
-
-This documentation is written for end users and focuses on:
-- Step-by-step setup instructions
-- User interface guidance
-- Troubleshooting common issues
-- Best practices for optimization
-- Security and privacy considerations
-
-## Technical Implementation Notes
-
-The underlying system includes:
-- JavaScript-based link modification (`ConversionTracking.js`)
-- Frontend Vue.js components for configuration
-- Real-time status monitoring
-- Comprehensive analytics system
-- Secure data handling and transmission
-
-## Support Resources
-
-- Email support: support@trackplay.io
-- Integration-specific troubleshooting guides
-- Status monitoring and health checks
-- Test transaction capabilities
+`configuration.mdx` is the landing page. Cart platforms, tags and pixels, conversions and
+outbound, and the ElevenLabs page are grouped under Integrations in `docs.json`.

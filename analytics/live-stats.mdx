@@ -1,0 +1,96 @@
+---
+title: "Live Stats"
+description: "Watch who is on your video right now, where they stopped, and what they did a moment ago, refreshed every 10 seconds."
+icon: "tower-broadcast"
+---
+
+Open a video and click **Live Stats**. It shows who is watching now, who watched
+recently, and what they did, without a date range to set.
+
+## Two presence states
+
+TrackPlay does not report one flat "live" number. A viewer is in exactly one of two
+states, and the difference matters: one means the video is actively playing in front of
+someone right now, the other means someone is still there but paused or stalled.
+
+| State | Meaning | Threshold |
+| --- | --- | --- |
+| **Watching now** | The playhead ticked within the last 25 seconds. | 25 seconds |
+| **On the video** | The session played, was active within the last 120 seconds, but is not currently ticking (paused, stalled, or the tab lost focus). | 120 seconds |
+
+The player reports a watch tick roughly every 10 seconds, so 25 seconds tolerates one
+missed tick plus normal write lag before TrackPlay decides the viewer stopped ticking.
+Past 120 seconds of no activity, the session drops off the live list entirely and moves
+to Recently Active instead.
+
+## Refresh
+
+The tab polls the server every **10 seconds**. There is no backend cache on this
+endpoint: every poll runs a live query, so what you see is never more than 10 seconds
+old.
+
+## The five trend cards
+
+Each card pairs a live number with a 30-point sparkline, one point per minute, covering
+the last 30 minutes.
+
+| Card | What it shows | Sparkline |
+| --- | --- | --- |
+| **Watching now** | Count of sessions currently ticking | Distinct sessions per minute bucket |
+| **On the video** | Count of sessions present but not ticking | Same series as Watching now |
+| **Avg Position** | Average playhead position across sessions live right now | Historical average position per minute, independent of who is still live |
+| **Furthest** | The furthest point any currently live session has reached | Historical furthest point reached per minute, by anyone, not only who is still live |
+| **Recent Events** | Total interaction events across the last 30 minutes | Events per minute |
+
+<Note>
+  Watching now and On the video share one sparkline: it is a count of distinct sessions
+  per minute, not a split between the two states over time.
+</Note>
+
+<Note>
+  The Avg Position and Furthest **card numbers** describe sessions live at this instant.
+  Their **sparklines** describe every session that was active in each historical minute,
+  whether or not it is still live now. Read the sparkline as "how far did viewers get
+  during that minute," not as a history of the current live group.
+</Note>
+
+Recent Events counts a fixed set of interaction types: clicks, hovers, tab switches,
+timed events, unmute, pause, autoplay (muted and with sound), resume, play, rewind,
+forward, and playback speed changes. High-volume watch-time heartbeats are not part of
+this count.
+
+## Recently active
+
+Below the live list, a second section lists sessions that watched in the last 30
+minutes but are no longer present. Each row shows country, position reached, and how
+long ago the session was last seen. There is no per-event timeline on this list, unlike
+the live rows below.
+
+## Live session rows
+
+Each row in the live list shows:
+
+- The viewer's identity if known (name or email from a matched contact), or the session
+  code if not
+- A presence pill: Watching or On the video
+- An "added to cart" badge, when the session has one
+- Country
+- Traffic source
+- Current position in the video, with a progress bar
+- Any custom data parameters captured on the session, as chips
+- Up to 6 recent events with type, description, and time, expandable for more
+
+## When nobody is watching
+
+With no live sessions and nothing in the last 30 minutes, the tab reads "No one is
+watching right now." A play in progress removes that state the moment its first watch
+tick lands, without a page reload.
+
+<Note>
+  Live Stats carries no plan restriction and no minimum sample size. A single viewer is
+  enough to populate every card.
+</Note>
+
+The same five cards, aggregated across every video in the workspace, appear on the
+**Dashboard** as the "Live now" strip, using the identical 25-second and 120-second
+thresholds.
