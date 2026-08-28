@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "TrackPlay Documentation",
   "colors": {
-    "primary": "#c03f24",
-    "light": "#c03f24",
-    "dark": "#c03f24"
+    "primary": "#f15a3a",
+    "light": "#ff7a5c",
+    "dark": "#dd4a2b"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -217,8 +217,8 @@
     }
   },
   "logo": {
-    "light": "https://storage.googleapis.com/elasticfunnels/89/media/logo.png",
-    "dark": "https://storage.googleapis.com/elasticfunnels/89/media/logo.png"
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
   },
   "navbar": {
     "primary": {
