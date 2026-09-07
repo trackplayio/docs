@@ -99,11 +99,14 @@ The validation component:
 - Tracks 'domain-blocked' event for analytics
 
 ### Error Handling
-Only a genuine **network** failure fails open:
+The check blocks a real hostname that is not on your list. Everything else plays:
 - The browser cannot reach the check at all: the video plays, and the error is logged to
   the console
-- The page URL cannot be parsed, or the check itself errors server-side: playback is
-  **blocked**, not allowed
+- The page has no hostname to check, because someone saved your page and opened it from
+  their own disk (`file://`), or the player is framed in an `about:blank` document: the
+  video plays. There is no hostname, so there is nothing your list could match it
+  against, and the server-side gate had already served this viewer anyway
+- The check itself errors server-side: playback is **blocked**, not allowed
 
 <Note>
   This overlay is not the thing protecting your video. Playback is gated server-side, on
@@ -157,6 +160,7 @@ During development, you may want to:
 | Video blocks on `www` subdomain | Add both `example.com` and `www.example.com` |
 | Development site blocked | Add `localhost` or your dev domain |
 | Staging environment blocked | Add staging domain to whitelist |
+| Page saved to disk and opened locally | Plays. A `file://` page has no hostname, so the whitelist has nothing to match and does not block it |
 
 ### Getting Help
 If you encounter issues:
