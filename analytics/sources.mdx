@@ -63,6 +63,64 @@ If the session carries no attribution data to check in the first place, the labe
   </Accordion>
 </AccordionGroup>
 
+## Tagging your email links
+
+Email is the one channel where the browser will not tell TrackPlay the truth on its own,
+so it is worth two minutes of setup.
+
+Add `utm_medium=email` to every link you send. That is the whole requirement:
+
+```text
+https://yoursite.com/vsl?utm_medium=email
+```
+
+`email`, `e-mail`, `mail`, and `newsletter` are all accepted. Add `utm_source` and
+`utm_campaign` if you want the broadcast broken out by name in the UTM Source and UTM
+Campaign tabs:
+
+```text
+https://yoursite.com/vsl?utm_medium=email&utm_source=weekly&utm_campaign=black-friday-3
+```
+
+Most email platforms can append this automatically to every link in a campaign. In
+ActiveCampaign, GoHighLevel, Klaviyo and Mailchimp it is the campaign-level link-tracking
+or UTM setting, so you set it once rather than editing links by hand.
+
+### Why the referrer is not enough on its own
+
+TrackPlay does recognize webmail referrers, and a click from Gmail, Outlook, Yahoo Mail,
+Proton Mail, Zoho, AOL, Superhuman, or a self-hosted Roundcube or `webmail.` host is
+classified as email even with no tag. That check deliberately runs **before** the
+search-engine check, because `mail.google.com` would otherwise match Google and your
+newsletter would be credited to organic search.
+
+But it only covers people reading email in a browser tab. Two large groups send no
+referrer at all:
+
+<AccordionGroup>
+  <Accordion title="Desktop mail apps send nothing">
+    Outlook for Windows and Mac, Apple Mail, and Thunderbird hand the link to the
+    operating system, which opens the browser with no referrer. The session looks Direct.
+  </Accordion>
+  <Accordion title="Phone mail apps usually send nothing">
+    The Gmail and Outlook apps and Apple Mail on iOS open links in an in-app browser or
+    the system browser. In most cases no referrer survives, so those sessions also look
+    Direct.
+  </Accordion>
+  <Accordion title="Gmail in a browser is the awkward one">
+    Gmail routes clicks through a Google redirect. When a referrer does arrive it is a
+    Google host, which is indistinguishable from search unless the classifier checks the
+    mail hosts first. TrackPlay does. Other analytics tools frequently do not, which is
+    why email traffic so often shows up as Google in them.
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  Tag the links. The referrer check is a safety net for untagged sends, not a
+  substitute for tagging, and it cannot see the desktop and mobile app readers who are
+  usually the majority of your list.
+</Tip>
+
 ## Click id parameters captured
 
 These platform click ids are recognized at step 3 of the classifier. Each one also

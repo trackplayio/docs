@@ -14,6 +14,9 @@ The profile reads top to bottom, most identifying information first, most granul
 behavior last.
 
 <Steps>
+  <Step title="Customer journey">
+    Every touchpoint on one timeline, oldest first. See below.
+  </Step>
   <Step title="Identity and reachability">
     Name if known, otherwise "Anonymous viewer." Below it, the same three-state
     reachability strip described in [Hot leads](/audience/hot-leads): reachable by email
@@ -47,6 +50,44 @@ behavior last.
     newest first.
   </Step>
 </Steps>
+
+## The customer journey
+
+The timeline at the top of the profile is the answer to "why did this person buy",
+in the order it happened. Each row is one touchpoint:
+
+| Row | What it means | Where it comes from |
+|---|---|---|
+| **A visit's source** | "Meta · Instagram ad", "Found you on Google", "Clicked your email", "Arrived through an affiliate", "Came direct" | First-touch attribution of that session: the click id, the campaign parameters, or the referrer |
+| **Which inbox** | "Gmail", "Outlook" underneath an email row, when the click came out of webmail rather than a tagged link | The referrer, checked against the mail clients before the search engines |
+| **Came back** | A later visit with no new source behind it, tagged with how long they were away ("6 days later") | The gap between one session ending and the next starting |
+| **Watched N%** | How far they got in that session, on that video | The furthest position the session reached |
+| **Clicked your CTA** | The button they clicked, whether it was an in-player card or a CTA on your page, and the price of the package | `cta-clicked` |
+| **Opened checkout** | They clicked through to the cart | `checkout-click` |
+| **Your own events** | Any server-to-server event you sent, under the name you gave it | Custom Events API |
+| **Purchased** | The sale, with the amount and the product | The conversion, from your cart or postback |
+
+A visit that came from an ad carries the campaign, ad and sub-id underneath it, so a
+media buyer can see which creative started the chain and which one merely re-touched it.
+Click any timestamp to open that session's full story.
+
+The email row comes from one of two signals: a landing tagged `utm_medium=email`, or a
+click out of a webmail client, in which case the row names it ("Gmail", "Outlook"). See
+[tagging your email links](/analytics/sources#tagging-your-email-links) for why tagging is
+worth doing even though the referrer check exists.
+
+<Warning>
+  **The journey never shows an email open.** TrackPlay only sees a touchpoint once the
+  tracker loads, which happens when someone lands on your page. The row says "Clicked
+  your email" for exactly that reason. Opens, sends and unsubscribes live in your email
+  platform and are not on this timeline. For the same reason, a watch on a video whose
+  duration TrackPlay does not know shows the point reached rather than a percentage.
+</Warning>
+
+<Note>
+  The timeline covers this person's 40 most recent sessions. Their full session list is
+  further down the page.
+</Note>
 
 ## "Also your customer in…"
 
