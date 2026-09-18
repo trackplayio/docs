@@ -102,7 +102,10 @@ player.on('milestone', function (event) {
 ## Subsequent Visit Events
 
 If you enable the subsequent visit toggle, you will get an extra event like `cta_subsequent` which will fire on every subsequent visit (for returning visitors).
-This is useful to automatically show CTA containers for returning 
+It fires as soon as a returning viewer starts watching with sound, not at the time you set, because they already saw that moment.
+This is useful to show your CTA right away to people who come back.
+
+The toggle needs **Call once** on the same event. That is what remembers the viewer, in a cookie, for 365 days.
 
 **Event:** `cta` (first-time visitors)
 
@@ -127,8 +130,8 @@ player.on('cta', function (event) {
 **Data:**
 ```javascript
 {
-  time: 30.0,           // Time when event was triggered (seconds)
-  percentage: 16.7,     // Percentage of video completed  
+  time: 0.4,            // Where the returning viewer was when it fired (seconds), usually the start
+  percentage: 0.2,      // Percentage of video completed
   session_id: "abc123"  // Device/session identifier
 }
 ```
@@ -139,6 +142,35 @@ player.on('cta_subsequent', function (event) {
   showReturningVisitorCTA();
 });
 ```
+
+### A different time for returning visitors
+
+`cta_subsequent` has no time of its own. To show the CTA to returning viewers at a specific point,
+use it to know the viewer is back, then wait for that point with the `time` event:
+
+```javascript
+document.addEventListener('TrackPlayReady', function (e) {
+  var player = e.detail.player;
+  var RETURNING_AT = 3; // seconds into the video
+
+  // First visit: fires at the time set in your dashboard
+  player.on('cta', showCallToAction);
+
+  // Returning visit: wait until RETURNING_AT, then show it once
+  player.on('cta_subsequent', function () {
+    function check(event) {
+      if (event.detail.time >= RETURNING_AT) {
+        player.off('time', check);
+        showCallToAction();
+      }
+    }
+    player.on('time', check);
+  });
+});
+```
+
+Actions you set on the event in the dashboard (show or hide elements, custom JavaScript) run when
+`cta_subsequent` fires, so for a delayed returning-visitor CTA, do the showing in code like above.
 
 ## Complete Integration Example
 
