@@ -7,13 +7,14 @@ icon: "film"
 ## Uploading
 
 <Warning>
-  The dashboard upload cap is **3 GB per file**. There is no duration limit, but there is
-  a hard size limit, and a file over it is rejected before it starts.
+  The dashboard upload cap is **5 GB per file**. There is no duration limit, but there is
+  a hard size limit. A file over it is flagged the moment you pick it, and Save stays
+  disabled until you swap in a smaller file, so nothing is created or uploaded.
 </Warning>
 
-Accepted formats: MP4, MOV, M4V, AVI, WebM, OGV, 3GP, MKV. A file below 1080p is accepted
-with a soft quality warning rather than being blocked, since a lower-resolution source is
-sometimes a deliberate choice, not a mistake.
+Accepted formats: MP4, MOV, M4V, AVI, WebM, OGV, 3GP, MKV, at any resolution. The upload
+dialog only warns about what you can act on: a clip that looks like it landed in the wrong
+slot, or an aspect ratio that will letterbox.
 
 ## Portrait: the mobile version
 
