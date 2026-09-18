@@ -81,7 +81,7 @@ Customizes the visual appearance of the player.
 **Impact on Integration:**
 - Available controls affect which user interactions are possible
 - Auto-fullscreen enters fullscreen when playback starts with sound and leaves it when the viewer
-  pauses. It does not fire a `fullscreen` page event. Native fullscreen fires `enter-fullscreen`
+  pauses. A viewer who leaves fullscreen while it plays stays inline until they pause and play again. It does not fire a `fullscreen` page event. Native fullscreen fires `enter-fullscreen`
   and `exit-fullscreen`; the immersive mode fires neither.
 - Control visibility affects user experience and event frequency
 

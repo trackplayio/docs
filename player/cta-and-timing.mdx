@@ -110,11 +110,15 @@ Lower level than a CTA card: run an arbitrary action at a time or percentage.
 | --- | --- |
 | **Show** | Reveals an element matching a CSS selector. |
 | **Hide** | Hides an element matching a CSS selector. |
+| **Scroll to element** | Smoothly scrolls the page to the first element matching a CSS selector, such as your order section. If the video is fullscreen, it leaves fullscreen first so the page can move. The video keeps playing. |
 | **Run JavaScript** | Executes your own code. |
 | **Tag in CRM** | Adds tags to the viewer in ActiveCampaign or GoHighLevel. |
 
 Each event fires at a **time** or a **percentage**, and you choose whether it fires once
 or on every subsequent play.
+
+Actions run in this order: show, hide, JavaScript, then scroll. So one event can reveal a
+hidden order section and scroll to it, with the same selector in both.
 
 <Tip>
   **AI-suggested CTAs** sits on this tab. It reads your transcript alongside your
