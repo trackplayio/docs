@@ -6,7 +6,8 @@ icon: "chart-area"
 
 Play counts and average watch time never tell you which second lost the sale. The
 Retention curve does: one line, built from where every session actually stopped, with
-your CTAs, your Pitch, and your conversions drawn on top of it.
+your CTAs, your Pitch, your conversions and the key moments of your script drawn on top
+of it.
 
 Open a video and click **Retention**.
 
@@ -83,16 +84,20 @@ tied to that moment, not everyone who watched past it.
 
 ## Markers: measurements versus annotations
 
-Three kinds of markers sit on the timeline, and they answer two different kinds of
+Four kinds of markers sit on the timeline, and they answer two different kinds of
 questions.
 
 <AccordionGroup>
-  <Accordion title="The Pitch marker: a measurement">
-    The Pitch marker is the median of a dedicated event, `pitch-time-reached`, fired once
-    per session by the player when it crosses your configured Pitch Time. TrackPlay takes
-    the exact median of every session's reported pitch time and draws one line at that
-    second. This is a measurement of actual viewer behavior. It requires traffic to
-    exist, and it moves as your audience's viewing pattern moves.
+  <Accordion title="The Pitch marker: measured when it can be, detected when it cannot">
+    When your video has a Pitch Time, the Pitch marker is the median of a dedicated
+    event, `pitch-time-reached`, fired once per session by the player when it crosses
+    it. TrackPlay takes the exact median of every session's reported pitch time and
+    draws one line at that second. This is a measurement of actual viewer behavior.
+
+    When there is no measurement yet, TrackPlay still draws the line. It uses the Pitch
+    Time you set, and if you set none, the second your script turns from content to
+    selling, which TrackPlay reads from the transcript. That line is labelled
+    **Pitch (detected)** so you always know which kind you are looking at.
   </Accordion>
   <Accordion title="CTA markers: also measured, with two counts each">
     Each CTA gets a numbered marker at the median second it appeared, alongside two
@@ -110,7 +115,43 @@ questions.
     at least one session with playback data, so on a genuinely empty video you will see
     an empty state instead of a chart carrying nothing but annotations.
   </Accordion>
+  <Accordion title="Key moments and chapters: what was on screen">
+    Every video with a transcript gets its key moments marked automatically: the hook,
+    each story and case study, the teaching sections, the offer, the price, the bonuses,
+    the guarantee, the close. TrackPlay reads them from the transcript as soon as it
+    exists, labels each one the way you would ("Case study #3", "Bonus stack"), and
+    places it at the second those words are spoken. You do not set anything up.
+
+    If you turned on chapters for the video (Customize Player, Chapters), your own chapters are
+    drawn instead, because you know your script better than we do. Hover the curve and
+    the panel beside it names the section you are in, so a drop reads as "we lost them
+    during the second case study" rather than "we lost them at 21:15".
+
+    They are drawn as slate hairlines, next to the teal timed-event markers. Where a key
+    moment lands within 10 seconds of a timed event, only the timed event is labelled.
+    The **Key moments** (or **Chapters**) button in the chart header hides them.
+
+    When the transcript changes (a re-transcription or a correction), the key moments
+    are read again within the hour.
+  </Accordion>
 </AccordionGroup>
+
+## Where people who reached the offer drop off
+
+Below the main curve, a second chart takes only the sessions that reached your offer
+and splits them into the ones who bought and the ones who left. The whole-audience
+buyers-versus-non-buyers view cannot answer this, because most of its non-buyers
+never got to the offer at all.
+
+"Reached the offer" means one of two things:
+
+- **Shown a CTA**, when the video has CTAs.
+- **Watched past the Pitch**, when it has none. The Pitch is the one described above,
+  measured or detected.
+
+The pitch-based version only appears once the video has recorded at least one
+purchase. With no buyers there is nothing to split, and the main curve already shows
+the rest.
 
 ## Comparing by device, orientation, or source
 
