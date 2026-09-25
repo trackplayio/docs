@@ -2681,7 +2681,7 @@
       "post": {
         "operationId": "uploadVideoSingleShot",
         "summary": "Upload a video in one request",
-        "description": "Uploads a video file in one `multipart/form-data` request, with the file in a `file` field. Same types and the same 5 GB ceiling as the resumable protocol, but a request that fails partway has to restart from zero, so use it for clips under 100 MB.\n\nThe file goes down the same encode and auto-publish pipeline as a dashboard upload, and the `video.uploaded` webhook fires. Answers `202` with the status to poll.\n\nRequires a token with the `videos:write` scope.",
+        "description": "Uploads a video file in one `multipart/form-data` request, with the file in a `file` field. Same types as the resumable protocol. One request carries at most 3,000 MB (a larger body gets a 413 from the server before it reaches TrackPlay), and a request that fails partway has to restart from zero, so use it for clips under 100 MB.\n\nThe file goes down the same encode and auto-publish pipeline as a dashboard upload, and the `video.uploaded` webhook fires. Answers `202` with the status to poll.\n\nRequires a token with the `videos:write` scope.",
         "tags": [
           "Uploads"
         ],
@@ -2718,7 +2718,7 @@
                   "file": {
                     "type": "string",
                     "format": "binary",
-                    "description": "The video file. Up to 5 GB. mp4, mov, m4v, avi, webm, ogv, 3gp or mkv."
+                    "description": "The video file. Up to 3,000 MB in one request (use the resumable protocol for up to 5 GB). mp4, mov, m4v, avi, webm, ogv, 3gp or mkv."
                   },
                   "orientation": {
                     "type": "string",
@@ -2773,6 +2773,9 @@
                 }
               }
             }
+          },
+          "413": {
+            "description": "The request body is over 3,000 MB. Use the resumable protocol."
           },
           "422": {
             "description": "Validation failed. `file` is required, at most 5 GB, and must be a supported video type.",

@@ -238,7 +238,8 @@ expired too.
   The video's numeric id.
 </ParamField>
 <ParamField body="file" type="file" required>
-  Multipart form field. Same types and the same 5 GB ceiling as the resumable protocol.
+  Multipart form field. Same types as the resumable protocol. One request can carry at most
+  3,000 MB: a larger body is refused with `413` before it reaches TrackPlay.
 </ParamField>
 <ParamField body="orientation" type="string" default="landscape">
   `landscape` or `portrait`.
@@ -256,8 +257,8 @@ curl -X POST https://app.trackplay.io/api/v1/videos/1187/upload \
 ```
 
 <Tip>
-  The ceiling is the same, but a dropped single-shot request costs you the whole file. Use
-  single-shot for clips under 100 MB and the resumable protocol for anything bigger.
+  A dropped single-shot request costs you the whole file. Use single-shot for clips under
+  100 MB and the resumable protocol for anything bigger.
 </Tip>
 
 ## Replacing the file
@@ -290,7 +291,7 @@ to nest one folder in another. Move an existing video with
 
 | | |
 | --- | --- |
-| File size | 5 GB per file, per orientation |
+| File size | 5 GB per file, per orientation, through the resumable protocol. 3,000 MB in a single-shot request. |
 | Types | mp4, mov, m4v, avi, webm, ogv, 3gp, mkv |
 | Chunk size | 8 MB (fixed by the server) |
 | Session lifetime | 24 hours from init |
