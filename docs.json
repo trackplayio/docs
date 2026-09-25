@@ -36,6 +36,7 @@
               "configuration/player-options",
               "player/themes",
               "player/playback",
+              "player/plain-mode",
               "player/resume",
               {
                 "group": "Convert the viewer",

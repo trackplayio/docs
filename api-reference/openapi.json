@@ -54,7 +54,7 @@
                     "video_code": "9f2c1a7e-4d3b-4a11-9e77-0b2c5d8e1f34",
                     "session_code": "3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22",
                     "conversion_id": "order_10482",
-                    "conversion_value": 297.0,
+                    "conversion_value": 297,
                     "conversion_currency": "USD",
                     "conversion_product_name": "Pro Annual",
                     "conversion_customer_email": "buyer@example.com"
@@ -490,7 +490,7 @@
                       "buckets": [
                         {
                           "bucket_pct": 0,
-                          "watch_pct": 1.0
+                          "watch_pct": 1
                         },
                         {
                           "bucket_pct": 25,
@@ -782,12 +782,12 @@
                         {
                           "event_name": "conversion",
                           "count": 214,
-                          "total_revenue": 63558.0
+                          "total_revenue": 63558
                         },
                         {
                           "event_name": "upsell",
                           "count": 38,
-                          "total_revenue": 7562.0
+                          "total_revenue": 7562
                         }
                       ]
                     }
@@ -1624,6 +1624,106 @@
             "description": "Rate limited. 600 requests per minute per token."
           }
         }
+      },
+      "patch": {
+        "operationId": "updateVideoPlainMode",
+        "summary": "Turn plain mode on or off",
+        "description": "Sets `plain_mode`: a silent looping clip with no overlays, prompts or controls. A video that has finished encoding is republished with the change (`republished: true`), so its existing embeds follow within about a minute. On a video still processing the setting is saved and picked up when it publishes.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Video settings"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "plain_mode"
+                ],
+                "properties": {
+                  "plain_mode": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "video": {
+                      "$ref": "#/components/schemas/VideoStatus"
+                    },
+                    "republished": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`: no video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`plain_mode` is missing or not a boolean.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
       }
     },
     "/videos/{video}/embed": {
@@ -1643,6 +1743,20 @@
               "type": "integer"
             },
             "description": "The video's numeric ID."
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "default",
+                "plain"
+              ],
+              "default": "default"
+            },
+            "description": "`plain` returns the plain mode snippet: a silent looping clip with nothing on top of it, loaded only when it nears the viewport."
           }
         ],
         "responses": {
@@ -2117,7 +2231,7 @@
       "post": {
         "operationId": "initVideoUpload",
         "summary": "Start a resumable upload",
-        "description": "Starts a resumable upload session for one orientation of a video. Send the file in 20 MB chunks with `PATCH /uploads/{upload}`, then finish with `POST /uploads/{upload}/complete`. The session expires 24 hours after it is created; chunks sent after that return `404 UPLOAD_NOT_FOUND`.\n\nFor files under 100 MB, the single-shot upload endpoint is simpler and needs no session management.\n\nRequires a token with the `videos:write` scope.",
+        "description": "Starts a resumable upload session for one orientation of a video. Send the file in 8 MB chunks with `PATCH /uploads/{upload}`, then finish with `POST /uploads/{upload}/complete`. The session expires 24 hours after it is created.\n\nFor files under 100 MB, the single-shot upload endpoint is simpler.\n\nRequires a token with the `videos:write` scope.",
         "tags": [
           "Uploads"
         ],
@@ -2183,17 +2297,17 @@
             }
           },
           "404": {
-            "description": "No video with that ID exists in this workspace.",
+            "description": "`VIDEO_NOT_FOUND`: no video with that ID exists in this workspace.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
           },
           "422": {
-            "description": "Validation failed. Check `size` is between 1 and 10,737,418,240 bytes, and `mime_type` is one of the supported video types.",
+            "description": "Validation failed. Check `size` is between 1 and 5,368,709,120 bytes, and `mime_type` is one of the supported video types.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2204,6 +2318,16 @@
           },
           "429": {
             "description": "Rate limited. 60 requests per minute per token."
+          },
+          "507": {
+            "description": "`INSUFFICIENT_STORAGE`: the server cannot take a file this size right now. Retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -2259,7 +2383,7 @@
             }
           },
           "400": {
-            "description": "`EMPTY_CHUNK`: the request body carried no bytes.",
+            "description": "`OFFSET_REQUIRED`: no `Upload-Offset` header. `EMPTY_CHUNK`: zero bytes. `SIZE_EXCEEDED`: the chunk goes past the size declared at init. The body carries the server's real `offset`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2299,7 +2423,7 @@
             }
           },
           "409": {
-            "description": "`OFFSET_MISMATCH`: the `Upload-Offset` header does not match the session's recorded offset. The response names the expected offset; resend from there.",
+            "description": "`OFFSET_MISMATCH`: your `Upload-Offset` is ahead of the server's, so a chunk was lost. Resend from the `offset` in the body.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2375,13 +2499,94 @@
             "description": "Rate limited. 60 requests per minute per token."
           }
         }
+      },
+      "get": {
+        "operationId": "getUploadSession",
+        "summary": "Read an upload session",
+        "description": "Returns how many bytes the server has for this session, so a client that crashed can resume from the right place.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Uploads"
+        ],
+        "parameters": [
+          {
+            "name": "upload",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The `upload_id` from `POST /videos/{video}/upload/init`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "upload_id": {
+                      "type": "string"
+                    },
+                    "video_id": {
+                      "type": "integer"
+                    },
+                    "offset": {
+                      "type": "integer"
+                    },
+                    "size": {
+                      "type": "integer"
+                    },
+                    "chunk_size": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`UPLOAD_NOT_FOUND`: no session with that ID in this workspace, or it expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
       }
     },
     "/uploads/{upload}/complete": {
       "post": {
         "operationId": "completeVideoUpload",
         "summary": "Finish a resumable upload",
-        "description": "Assembles every chunk received for this session in order and pushes the result to the video CDN. On success, the video's HLS URL and dimensions for that orientation are set and the session's temporary files are deleted. Fires the `video.uploaded` webhook.\n\nCalling this before any chunks were sent fails with a 400. A CDN failure leaves the video unchanged and returns a 500: retry the complete call, the assembled chunks are only cleaned up after a successful push.\n\nRequires a token with the `videos:write` scope.",
+        "description": "Checks that every byte arrived and that the bytes really are a video (the declared `mime_type` is not trusted), then hands the file to the same encode and auto-publish pipeline as a dashboard upload, and fires the `video.uploaded` webhook. Answers `202` with the status to poll.\n\nRequires a token with the `videos:write` scope.",
         "tags": [
           "Uploads"
         ],
@@ -2406,22 +2611,12 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Upload finished. The video now carries the uploaded asset for the requested orientation.",
+          "202": {
+            "description": "Accepted. The file is stored and on its way to the encoder. Poll `GET /videos/{video}/status` until `status` is `ready`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VideoEnvelope"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "`NO_CHUNKS`: no chunks were received for this session before calling complete.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "$ref": "#/components/schemas/VideoStatusEnvelope"
                 }
               }
             }
@@ -2456,11 +2651,8 @@
               }
             }
           },
-          "429": {
-            "description": "Rate limited. 60 requests per minute per token."
-          },
-          "500": {
-            "description": "`CDN_ERROR`: the assembled file failed to reach the CDN. Retry the complete call.",
+          "409": {
+            "description": "`INCOMPLETE`: not every byte has arrived. The session stays open; send the rest from the `offset` in the body and call complete again.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2468,6 +2660,19 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "`UNSUPPORTED_MEDIA_TYPE`: the bytes are not a supported video. The session is closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
           }
         }
       }
@@ -2476,7 +2681,7 @@
       "post": {
         "operationId": "uploadVideoSingleShot",
         "summary": "Upload a video in one request",
-        "description": "Uploads a video file directly, for files up to 100 MB. Send `multipart/form-data` with the file in a `file` field. For larger files, use the resumable upload protocol (`POST /videos/{video}/upload/init` and following) instead: a single request that fails partway through a 100 MB body has to restart from zero, a resumable session does not.\n\nOn success, the video's HLS URL and dimensions for the requested orientation are set. Fires no webhook: `video.uploaded` only fires from the resumable protocol's complete step.\n\nRequires a token with the `videos:write` scope.",
+        "description": "Uploads a video file in one `multipart/form-data` request, with the file in a `file` field. Same types and the same 5 GB ceiling as the resumable protocol, but a request that fails partway has to restart from zero, so use it for clips under 100 MB.\n\nThe file goes down the same encode and auto-publish pipeline as a dashboard upload, and the `video.uploaded` webhook fires. Answers `202` with the status to poll.\n\nRequires a token with the `videos:write` scope.",
         "tags": [
           "Uploads"
         ],
@@ -2513,7 +2718,7 @@
                   "file": {
                     "type": "string",
                     "format": "binary",
-                    "description": "The video file. Up to 100 MB. Must be mp4, mov (quicktime/m4v), avi, or webm."
+                    "description": "The video file. Up to 5 GB. mp4, mov, m4v, avi, webm, ogv, 3gp or mkv."
                   },
                   "orientation": {
                     "type": "string",
@@ -2529,12 +2734,12 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Uploaded.",
+          "202": {
+            "description": "Accepted. The file is stored and on its way to the encoder. Poll `GET /videos/{video}/status` until `status` is `ready`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VideoEnvelope"
+                  "$ref": "#/components/schemas/VideoStatusEnvelope"
                 }
               }
             }
@@ -2560,17 +2765,17 @@
             }
           },
           "404": {
-            "description": "No video with that ID exists in this workspace.",
+            "description": "`VIDEO_NOT_FOUND`: no video with that ID exists in this workspace.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LaravelNotFoundError"
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
           },
           "422": {
-            "description": "Validation failed. `file` is required, at most 100 MB, and must be one of the supported video MIME types.",
+            "description": "Validation failed. `file` is required, at most 5 GB, and must be a supported video type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2582,8 +2787,8 @@
           "429": {
             "description": "Rate limited. 60 requests per minute per token."
           },
-          "500": {
-            "description": "`CDN_ERROR`: the file failed to reach the CDN. Retry the upload.",
+          "507": {
+            "description": "`INSUFFICIENT_STORAGE`: the server cannot take a file this size right now. Retry later.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4369,7 +4574,7 @@
                     "workspace_code": "WS123",
                     "integration": "clickbank",
                     "order_id": "ORDER-9001",
-                    "value": 97.0,
+                    "value": 97,
                     "currency": "USD",
                     "session_id": "3b1e5c90-77aa-4f2d-8c31-6de0a9b41c22",
                     "customer_email": "buyer@example.com"
@@ -4459,6 +4664,216 @@
           }
         }
       }
+    },
+    "/videos/{video}/status": {
+      "get": {
+        "operationId": "getVideoStatus",
+        "summary": "Get processing status",
+        "description": "The call to poll after an upload: `waiting_for_upload`, `processing`, `ready` or `error`, per orientation, with both embed snippets once the video is ready. Reads stored state only, so polling every 10 to 15 seconds is cheap.\n\nRequires a token with the `videos:read` scope.",
+        "tags": [
+          "Uploads"
+        ],
+        "parameters": [
+          {
+            "name": "video",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "The video's numeric ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoStatusEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`: no video with that ID exists in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 600 requests per minute per token."
+          }
+        }
+      }
+    },
+    "/folders": {
+      "get": {
+        "operationId": "listFolders",
+        "summary": "List folders",
+        "description": "The workspace's video folders, flat, with a `videos_count` each. Nest them yourself from `parent_id`.\n\nRequires a token with the `videos:read` scope.",
+        "tags": [
+          "Videos"
+        ],
+        "responses": {
+          "200": {
+            "description": "The folders.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Folder"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:read`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 600 requests per minute per token."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createFolder",
+        "summary": "Create a folder",
+        "description": "Creates a folder to file videos into. A folder changes where a video is listed in the dashboard and nothing about how it plays.\n\nRequires a token with the `videos:write` scope.",
+        "tags": [
+          "Videos"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "parent_id": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "Nest it in a folder of this workspace."
+                  },
+                  "color": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 16
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "folder": {
+                      "$ref": "#/components/schemas/Folder"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`AUTH_REQUIRED`: no token sent. `INVALID_TOKEN`: the token is invalid, expired, or revoked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`INSUFFICIENT_SCOPE`: the token does not carry `videos:write`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed, or `FOLDER_NOT_FOUND`: `parent_id` is not a folder of this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited. 60 requests per minute per token."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4466,7 +4881,7 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "A scoped token minted in **Settings \u2192 API tokens**. Send it as `Authorization: Bearer tplt_\u2026` or `X-API-Key: tplt_\u2026`."
+        "description": "A scoped token minted in **Settings → API tokens**. Send it as `Authorization: Bearer tplt_…` or `X-API-Key: tplt_…`."
       }
     },
     "schemas": {
@@ -5217,7 +5632,7 @@
           },
           "folder_id": {
             "type": "integer",
-            "description": "Places the video in an existing folder. Optional."
+            "description": "Places the video in an existing folder of this workspace. Anything else is refused with `422 FOLDER_NOT_FOUND`."
           },
           "tags": {
             "type": "array",
@@ -5240,6 +5655,11 @@
           "copy_from": {
             "type": "integer",
             "description": "Copy every option-group column and the player version from another video in this workspace. The new video still needs its own upload: source media is never copied."
+          },
+          "plain_mode": {
+            "type": "boolean",
+            "default": false,
+            "description": "`true` makes the video a silent looping clip with no overlays, prompts or controls. See the Plain mode guide."
           }
         }
       },
@@ -5255,7 +5675,8 @@
             "type": [
               "integer",
               "null"
-            ]
+            ],
+            "description": "A folder of this workspace (anything else is `422 FOLDER_NOT_FOUND`), or `null` to move the video out of its folder."
           },
           "tags": {
             "type": "array",
@@ -5290,6 +5711,14 @@
               "additionalProperties": true
             },
             "description": "The video's timed events (chapters, CTA cards, and similar), in playback order."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "default",
+              "plain"
+            ],
+            "description": "Which snippet `html` is."
           }
         }
       },
@@ -5488,8 +5917,8 @@
           "size": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 10737418240,
-            "description": "The file size in bytes. Capped at 10 GB (10,737,418,240 bytes)."
+            "maximum": 5368709120,
+            "description": "The file size in bytes. Capped at 5 GB (5,368,709,120 bytes), the same ceiling as the dashboard."
           },
           "mime_type": {
             "type": "string",
@@ -5521,20 +5950,33 @@
           "upload_id": {
             "type": "string",
             "examples": [
-              "tpup_9f2c1a7e4d3b4a11..."
+              "tpup_8f2c9a1b3e4d5f607182930a4b5c6d7e"
             ]
           },
           "chunk_size": {
             "type": "integer",
-            "description": "The byte size you should send per `PATCH` chunk (20,971,520 bytes, fixed).",
+            "description": "Bytes to send per `PATCH` chunk (8,388,608, fixed by the server). The last chunk is whatever is left.",
             "examples": [
-              20971520
+              8388608
             ]
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Bytes received so far. `0` at init."
+          },
+          "size": {
+            "type": "integer",
+            "description": "The size you declared."
           },
           "expires_at": {
             "type": "string",
             "format": "date-time",
-            "description": "The upload session dies after this time. Chunks sent afterward return `404 UPLOAD_NOT_FOUND`."
+            "description": "The session and its chunks expire after this time."
+          },
+          "upload_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Where to `PATCH` chunks."
           }
         }
       },
@@ -5544,6 +5986,10 @@
           "offset": {
             "type": "integer",
             "description": "The total bytes received so far. Send your next chunk's `Upload-Offset` header as this value."
+          },
+          "size": {
+            "type": "integer",
+            "description": "The size declared at init."
           }
         }
       },
@@ -6607,6 +7053,149 @@
             "description": "True when `session_id` resolved to a known session."
           }
         }
+      },
+      "OrientationStatus": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "description": "`null` until a file is sent for this orientation.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "waiting_for_upload",
+              "processing",
+              "ready",
+              "error"
+            ]
+          },
+          "progress": {
+            "type": "integer",
+            "description": "Percentage. Moves in steps, not smoothly."
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why the encode failed, in a sentence you can show a person. `null` unless `status` is `error`."
+          }
+        }
+      },
+      "VideoStatus": {
+        "type": "object",
+        "description": "The processing status of a video. Returned by every upload call and by `GET /videos/{video}/status`.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "folder_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "waiting_for_upload",
+              "processing",
+              "ready",
+              "error"
+            ],
+            "description": "`waiting_for_upload`: no file yet. `processing`: on its way to, or in, the encoder. `ready`: every uploaded orientation finished encoding. `error`: an orientation failed; read its `error`."
+          },
+          "orientations": {
+            "type": "object",
+            "properties": {
+              "landscape": {
+                "$ref": "#/components/schemas/OrientationStatus"
+              },
+              "portrait": {
+                "$ref": "#/components/schemas/OrientationStatus"
+              }
+            }
+          },
+          "plain_mode": {
+            "type": "boolean",
+            "description": "Whether the video is set to plain mode (a silent looping clip with no overlays)."
+          },
+          "status_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "embed": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "`null` until `status` is `ready`. The player publishes itself within about a minute of `ready`.",
+            "properties": {
+              "script_url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "html": {
+                "type": "string",
+                "description": "The standard embed snippet."
+              },
+              "plain_html": {
+                "type": "string",
+                "description": "The plain mode snippet (`data-trackplay-mode=\"plain\"`, clean first-frame poster, script loaded only near the viewport)."
+              }
+            }
+          }
+        }
+      },
+      "VideoStatusEnvelope": {
+        "type": "object",
+        "properties": {
+          "video": {
+            "$ref": "#/components/schemas/VideoStatus"
+          }
+        }
+      },
+      "Folder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "parent_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "videos_count": {
+            "type": "integer",
+            "description": "Listed videos in the folder (list only)."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       }
     }
   },
@@ -6621,7 +7210,7 @@
     },
     {
       "name": "Uploads",
-      "description": "Upload a source video file, either as a single request or in resumable chunks."
+      "description": "Upload a source video file in one request or in resumable chunks, and poll its processing status."
     },
     {
       "name": "Captions and chapters",

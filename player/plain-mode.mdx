@@ -1,0 +1,127 @@
+---
+title: "Plain mode"
+description: "A product clip that plays silently, loops, and never puts anything on top of itself. For feature tours and explainers, not for sales videos."
+icon: "square-play"
+sidebarTitle: "Plain mode"
+---
+
+Your sales video wants attention: sound, a prompt to listen, a CTA at the pitch. A
+30-second clip showing a feature on your pricing page wants the opposite. It should look
+like a moving screenshot. Plain mode is that.
+
+## What the viewer gets
+
+- It plays **muted**, on its own, and **loops** from the start.
+- **Nothing sits on top of it.** No "click to listen" overlay, no unmute prompt, no resume
+  prompt, no paused or end screen, no CTA cards, lead form or exit intent, no big play
+  button, no control bar, no loading spinner.
+- **Sound never switches on.** Not after a scroll, not after a click anywhere on the page,
+  not after a click on the video.
+- **Nothing loads until it is near the screen.** The poster (the clip's first frame) holds
+  its place until the clip is within 200px of the viewport. Then it starts. Scroll it out of
+  view and it pauses; scroll back and it carries on.
+- It plays **inline** on phones, never jumping to fullscreen.
+
+There is no TrackPlay badge in the player on any plan, so there is no branding to remove.
+
+<Note>
+  A click on a plain clip does one thing: start it, if the browser refused to autoplay it.
+  iPhones in Low Power Mode block even muted autoplay, so there the clip starts on the
+  first tap anywhere on the page, still muted.
+</Note>
+
+## Turn it on
+
+Plain mode can be set on the video, or on a single embed. Both end up in the same place.
+
+<Tabs>
+  <Tab title="On the embed">
+    Add `data-trackplay-mode="plain"` to the embed's container. The same video stays a
+    normal player everywhere else, so one clip can be plain on your features page and a full
+    player on a sales page.
+
+    The API hands you a ready-made plain snippet: `embed.plain_html` from
+    [`GET /v1/videos/{video}/status`](/api-reference/uploads#the-status-object), or
+    `GET /v1/videos/{video}/embed?mode=plain`. It is the one to use, because it also swaps
+    the poster for the clip's clean first frame and loads the player script only when the
+    clip nears the screen:
+
+    ```html
+    <div class="video" id="VIDEO_CODE" data-trackplay-mode="plain"
+         style="position:relative;width:100%;aspect-ratio: 1920 / 1080;margin:0 auto;">
+        <picture style="position:absolute;top:0;left:0;width:100%;height:100%;">
+            <img src="https://scripts.trackplay.io/VIDEO_CODE/landscape_cover.jpg" alt="" loading="lazy"
+                 style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block;">
+        </picture>
+    </div>
+    <script type="text/javascript">
+    (function () {
+        window.trackplay_config = window.trackplay_config || {};
+        window.trackplay_config.embed_app_base = "https://app.trackplay.io";
+        var box = document.getElementById('VIDEO_CODE');
+        function load() {
+            var s = document.createElement('script');
+            s.src = "https://scripts.trackplay.io/WORKSPACE_CODE/VIDEO_CODE.js";
+            s.async = true;
+            document.head.appendChild(s);
+        }
+        if (!box || typeof IntersectionObserver === 'undefined') { load(); return; }
+        var io = new IntersectionObserver(function (entries) {
+            if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); load(); }
+        }, { rootMargin: '200px 0px' });
+        io.observe(box);
+    })();
+    </script>
+    ```
+
+    Adding the attribute to a snippet you copied from the **Embed** tab works too. You keep
+    that snippet's poster, which for most videos is a still with the "Your video is playing"
+    prompt drawn on it, until the clip starts.
+  </Tab>
+  <Tab title="On the video (API)">
+    Set it when you create the video:
+
+    ```bash curl
+    curl -X POST https://app.trackplay.io/api/v1/videos \
+      -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+      -H "Content-Type: application/json" \
+      -d '{ "title": "Feature tour: split tests", "plain_mode": true }'
+    ```
+
+    Or switch it on or off later:
+
+    ```bash curl
+    curl -X PATCH https://app.trackplay.io/api/v1/videos/1187/settings \
+      -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+      -H "Content-Type: application/json" \
+      -d '{ "plain_mode": true }'
+    ```
+
+    ```json 200 OK
+    { "video": { "id": 1187, "status": "ready", "plain_mode": true, "...": "..." }, "republished": true }
+    ```
+
+    `republished: true` means the video had finished encoding and its player was rebuilt
+    with the change, so every existing embed of it becomes plain within about a minute. On a
+    video still processing it is `false` and the setting is picked up when the video
+    publishes. Needs a token with `videos:write`.
+  </Tab>
+</Tabs>
+
+<Warning>
+  Plain mode switches off everything that converts a viewer: sound, CTAs, lead capture, exit
+  intent, resume. Do not use it on a sales video.
+</Warning>
+
+## What it leaves alone
+
+Views of a plain clip show up in your analytics like any other video's. Your pixels and your
+[domain allowlist](/configuration/domain-whitelist) work exactly as on any other video. The
+player's [JavaScript API](/configuration/dynamic-options) still works, so your own page code
+can still control the clip; plain mode only stops the player from turning sound on or
+putting anything on screen by itself.
+
+## There is no dashboard switch yet
+
+Plain mode is set through the API or the embed attribute. The Customize screen does not show
+it yet, and saving other settings there keeps it as it is.

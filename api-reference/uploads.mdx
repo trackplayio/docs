@@ -1,65 +1,171 @@
 ---
 title: "Uploads API"
-description: "Push a video file in, in chunks you control, so a dropped connection costs you a chunk instead of the whole file."
+description: "Create a video, send the file, poll until it is ready, and paste the embed. The same pipeline as the dashboard uploader, driven from your own code."
 icon: "cloud-arrow-up"
 sidebarTitle: "Uploads API"
 ---
 
-A raw single-request upload works until the file is large or the connection is not.
-This is the resumable protocol behind the dashboard's own uploader: init a session,
-send the file in chunks, complete it. If the file is small, skip straight to the
-single-shot call at the bottom of this page.
+An upload through the API goes down the exact path a dashboard upload takes: the file is
+encoded, the player publishes itself when encoding finishes, and the poster and transcript
+follow. You send the bytes and poll one status field. There is no publish call to forget.
 
-Every call here needs a token with `videos:write`.
+Every call here needs a token with `videos:write`, and the status poll needs `videos:read`.
+Send it as `Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` (or the
+`X-API-Key` header). See [Authentication](/api-reference/authentication).
 
-## The resumable protocol
+## The whole flow
+
+<Steps>
+  <Step title="Create the video">
+    ```bash curl
+    curl -X POST https://app.trackplay.io/api/v1/videos \
+      -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+      -H "Content-Type: application/json" \
+      -d '{ "title": "Feature tour: split tests", "folder_id": 42, "plain_mode": true }'
+    ```
+
+    ```json 201 Created
+    {
+      "video": { "id": 1187, "code": "3f6b1c2e-9d41-4f0a-b5c7-2a8e6d1f0b93", "title": "Feature tour: split tests", "folder_id": 42, "...": "..." },
+      "status": { "id": 1187, "status": "waiting_for_upload", "orientations": { "landscape": null, "portrait": null }, "plain_mode": true, "embed": null, "...": "..." }
+    }
+    ```
+
+    `folder_id` is optional and must be a folder in your workspace (see
+    [Folders](#folders)). `plain_mode` is optional: `true` makes the video a silent looping
+    clip with nothing on top of it (see [Plain mode](/player/plain-mode)).
+  </Step>
+  <Step title="Send the file">
+    Under 100 MB, one multipart request is enough:
+
+    ```bash curl
+    curl -X POST https://app.trackplay.io/api/v1/videos/1187/upload \
+      -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+      -F "file=@split-tests.mp4"
+    ```
+
+    Anything larger, or anything sent over a connection you do not trust, goes through the
+    [resumable protocol](#resumable-upload) below. Both answer `202 Accepted` with the
+    status object.
+  </Step>
+  <Step title="Poll the status">
+    ```bash curl
+    curl https://app.trackplay.io/api/v1/videos/1187/status \
+      -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ```
+
+    Poll every 10 to 15 seconds. A short clip is usually `ready` within one to three
+    minutes; an hour-long source can take 20 minutes or more.
+  </Step>
+  <Step title="Paste the embed">
+    When `status` is `ready`, the response carries `embed.html` (the standard player) and
+    `embed.plain_html` (the plain mode snippet). Paste either into your page.
+  </Step>
+</Steps>
+
+## The status object
+
+Every upload call and `GET /v1/videos/{video}/status` return the same shape.
+
+```json 200 OK
+{
+  "video": {
+    "id": 1187,
+    "code": "3f6b1c2e-9d41-4f0a-b5c7-2a8e6d1f0b93",
+    "title": "Feature tour: split tests",
+    "folder_id": 42,
+    "status": "ready",
+    "orientations": {
+      "landscape": { "status": "ready", "progress": 100, "error": null },
+      "portrait": null
+    },
+    "plain_mode": true,
+    "status_url": "https://app.trackplay.io/api/v1/videos/1187/status",
+    "embed": {
+      "script_url": "https://scripts.trackplay.io/WORKSPACE_CODE/3f6b1c2e-9d41-4f0a-b5c7-2a8e6d1f0b93.js",
+      "html": "<div class=\"video\" id=\"3f6b1c2e-...\"> ... </script>",
+      "plain_html": "<div class=\"video\" id=\"3f6b1c2e-...\" data-trackplay-mode=\"plain\"> ... </script>"
+    }
+  }
+}
+```
+
+<ResponseField name="status" type="string">
+  One of four values.
+
+  - `waiting_for_upload`: the video exists and no file has arrived.
+  - `processing`: a file is on its way to the encoder or being encoded.
+  - `ready`: every orientation you uploaded has finished encoding. `embed` is filled in.
+  - `error`: an orientation failed. Its `error` says why, in a sentence you can show a person.
+</ResponseField>
+
+<ResponseField name="orientations" type="object">
+  `landscape` and `portrait`, each `null` until a file is sent for it, then
+  `{ status, progress, error }`. `progress` is a percentage and moves in steps, not
+  smoothly.
+</ResponseField>
+
+<ResponseField name="embed" type="object | null">
+  `null` until `status` is `ready`, because the player script does not exist before then
+  and an embed would render an empty box.
+</ResponseField>
+
+<Note>
+  The player publishes itself within about a minute of `ready`. If you load the embed the
+  very second the status flips and see an empty box, reload once. Nothing is broken.
+</Note>
+
+## Resumable upload
+
+For large files. Send the file in chunks, so a dropped connection costs one chunk instead
+of the whole file.
 
 <Steps>
   <Step title="Init">
     <ParamField path="video" type="integer" required>
-      The video's numeric id. The video shell must already exist: create one with
-      [`POST /v1/videos`](/api-reference/videos#create-a-video) first.
+      The video's numeric id, from `POST /v1/videos`.
     </ParamField>
     <ParamField body="filename" type="string" required>
       Max 255 characters.
     </ParamField>
     <ParamField body="size" type="integer" required>
-      Bytes. From 1 up to 10,737,418,240 (10 GB).
+      The file size in bytes, from 1 up to 5,368,709,120 (5 GB).
     </ParamField>
     <ParamField body="mime_type" type="string" required>
       One of `video/mp4`, `video/quicktime`, `video/x-m4v`, `video/x-msvideo`,
       `video/webm`, `video/ogg`, `video/3gpp`, `video/x-matroska`.
     </ParamField>
     <ParamField body="orientation" type="string" default="landscape">
-      `landscape` or `portrait`.
+      `landscape`, or `portrait` for the mobile version of the same video.
     </ParamField>
 
     ```bash curl
-    curl -X POST https://app.trackplay.io/api/v1/videos/512/upload/init \
+    curl -X POST https://app.trackplay.io/api/v1/videos/1187/upload/init \
       -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
       -H "Content-Type: application/json" \
-      -d '{ "filename": "vsl-final.mp4", "size": 314572800, "mime_type": "video/mp4" }'
+      -d '{ "filename": "webinar.mp4", "size": 314572800, "mime_type": "video/mp4" }'
     ```
 
     ```json 201 Created
-    { "upload_id": "tpup_8f2c9a1b3e4d5f607182930a4b5c6d7e", "chunk_size": 20971520, "expires_at": "2026-08-13T10:00:00Z" }
+    {
+      "upload_id": "tpup_8f2c9a1b3e4d5f607182930a4b5c6d7e",
+      "chunk_size": 8388608,
+      "offset": 0,
+      "size": 314572800,
+      "expires_at": "2026-09-26T10:00:00+00:00",
+      "upload_url": "https://app.trackplay.io/api/v1/uploads/tpup_8f2c9a1b3e4d5f607182930a4b5c6d7e"
+    }
     ```
 
-    `chunk_size` is fixed by the server at 20 MB (`20971520` bytes). It is not
-    something you request. The session lives for 24 hours: if you have not called
-    `/complete` by `expires_at`, the session and everything you sent expire and you
-    start over from `/init`.
+    The session lives 24 hours. Call `/complete` before `expires_at`, or the chunks expire
+    and you start again from init.
   </Step>
 
   <Step title="Send chunks">
-    <ParamField path="upload" type="string" required>
-      The `upload_id` from init.
-    </ParamField>
-
-    Send the file as a sequence of `PATCH` requests, each carrying up to `chunk_size`
-    bytes of the raw file as the request body, with `Content-Type:
-    application/offset+octet-stream` and an `Upload-Offset` header giving the number of
-    bytes already sent before this chunk (start at `0`).
+    `PATCH` the raw bytes of each chunk to `upload_url`, with `Content-Type:
+    application/offset+octet-stream` and an `Upload-Offset` header holding the number of
+    bytes already sent (start at `0`). Send chunks of `chunk_size` (8 MB); the last one is
+    whatever is left.
 
     ```bash curl
     curl -X PATCH https://app.trackplay.io/api/v1/uploads/tpup_8f2c9a1b3e4d5f607182930a4b5c6d7e \
@@ -70,52 +176,45 @@ Every call here needs a token with `videos:write`.
     ```
 
     ```json 200 OK
-    { "offset": 20971520 }
+    { "offset": 8388608, "size": 314572800 }
     ```
 
-    The response's `offset` is the new total bytes received. Send it back as the next
-    chunk's `Upload-Offset`.
+    Send the returned `offset` as the next chunk's `Upload-Offset`.
 
     <Tip>
-      Re-sending a chunk at an offset you already sent is safe: the server sees
-      `Upload-Offset` behind its own recorded offset, returns `200` with the current
-      (unchanged) offset, and does not write the bytes again. This is what makes a
-      retried chunk request free.
+      Re-sending a chunk you already sent is safe. The server sees an offset behind its own,
+      writes nothing, and returns `200` with the real offset. So after any network error,
+      resend the same chunk.
     </Tip>
 
-    <Warning>
-      Sending `Upload-Offset` **ahead of** the session's recorded offset, further than
-      what you have actually confirmed was written, gets a `409 OFFSET_MISMATCH`. The
-      error names the offset the server actually has; resume from there, not from
-      wherever your client thinks it left off.
-    </Warning>
+    Lost track of where you were (your process crashed)? Ask:
+
+    ```bash curl
+    curl https://app.trackplay.io/api/v1/uploads/tpup_8f2c9a1b3e4d5f607182930a4b5c6d7e \
+      -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ```
+
+    ```json 200 OK
+    { "upload_id": "tpup_8f2c9a1b3e4d5f607182930a4b5c6d7e", "video_id": 1187, "offset": 25165824, "size": 314572800, "chunk_size": 8388608 }
+    ```
   </Step>
 
   <Step title="Complete">
-    <ParamField path="upload" type="string" required>
-      The `upload_id`.
-    </ParamField>
-
     ```bash curl
     curl -X POST https://app.trackplay.io/api/v1/uploads/tpup_8f2c9a1b3e4d5f607182930a4b5c6d7e/complete \
       -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     ```
 
-    ```json 200 OK
-    { "video": { "id": 512, "landscape_hls": "https://cdn.trackplay.io/.../playlist.m3u8", "...": "..." } }
+    ```json 202 Accepted
+    { "video": { "id": 1187, "status": "processing", "orientations": { "landscape": { "status": "processing", "progress": 0, "error": null }, "portrait": null }, "embed": null, "...": "..." } }
     ```
 
-    Complete assembles every chunk you sent, in offset order, and pushes the result to
-    the CDN. On success it sets the video's HLS URL and metadata for whichever
-    orientation you gave at init, and fires the `video.uploaded` webhook.
+    Complete checks that every byte arrived and that the file really is a video (the bytes
+    are checked, not the `mime_type` you declared), then hands it to the encoder and fires
+    the `video.uploaded` webhook. From here, poll the status.
 
-    <Warning>
-      Complete is not itself resumable. Whether it succeeds or fails, the session's
-      temporary files are deleted immediately afterward (`upload_id` stops working
-      either way). A CDN failure here does not leave anything to retry: you get a `500
-      CDN_ERROR` and have to start over from `/init`. The chunk-retry safety above
-      covers getting bytes to TrackPlay; it does not cover the final CDN handoff.
-    </Warning>
+    If bytes are missing you get `409 INCOMPLETE` with the real `offset`, and the session
+    stays open: send the rest and call complete again.
   </Step>
 </Steps>
 
@@ -130,94 +229,121 @@ curl -X DELETE https://app.trackplay.io/api/v1/uploads/tpup_8f2c9a1b3e4d5f607182
 { "deleted": true }
 ```
 
-Cleans up whatever chunks you have sent and frees the `upload_id`. Safe to call on a
-session that has already expired or was already aborted: it returns `{"deleted": true}`
-either way rather than a 404.
-
-<Tip>
-  At the standard 60-writes-per-minute limit, a full 10 GB file at the fixed 20 MB
-  chunk size needs exactly 512 `PATCH` calls, roughly nine minutes of calls alone
-  before you count transfer time. Send chunks as large as your client can hold
-  reliably; do not split below 20 MB "to be safe", it only multiplies your call count
-  against the same limit.
-</Tip>
+Deletes whatever chunks you sent. It returns `{"deleted": true}` for a session that already
+expired too.
 
 ## Single-shot upload
-
-For a file you already have in full: post it once, no session, no chunking.
 
 <ParamField path="video" type="integer" required>
   The video's numeric id.
 </ParamField>
 <ParamField body="file" type="file" required>
-  Multipart form field. Max 100 MB. One of `video/mp4`, `video/quicktime`,
-  `video/x-m4v`, `video/x-msvideo`, `video/webm`. This is a **smaller** MIME allowlist
-  than the resumable protocol: no `video/ogg`, `video/3gpp` or `video/x-matroska` here.
+  Multipart form field. Same types and the same 5 GB ceiling as the resumable protocol.
 </ParamField>
 <ParamField body="orientation" type="string" default="landscape">
   `landscape` or `portrait`.
 </ParamField>
 
 ```bash curl
-curl -X POST https://app.trackplay.io/api/v1/videos/512/upload \
+curl -X POST https://app.trackplay.io/api/v1/videos/1187/upload \
   -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
   -F "file=@short-ad.mp4" \
   -F "orientation=portrait"
 ```
 
-```json 201 Created
-{ "video": { "id": 512, "portrait_hls": "https://cdn.trackplay.io/.../playlist.m3u8", "...": "..." } }
+```json 202 Accepted
+{ "video": { "id": 1187, "status": "processing", "orientations": { "landscape": null, "portrait": { "status": "processing", "progress": 0, "error": null } }, "...": "..." } }
 ```
 
-No `video.uploaded` webhook fires from this call: that event is specific to the
-resumable protocol's `/complete` step.
-
 <Tip>
-  Use single-shot for anything at or under 100 MB in one of the five supported types: a
-  short clip, a vertical ad, a quick swap. Use the resumable protocol for anything
-  larger, or for uploads originating somewhere you cannot guarantee one uninterrupted
-  request, a customer's browser, a flaky server. A dropped chunk only costs you that
-  chunk; a dropped single-shot request costs you the whole file.
+  The ceiling is the same, but a dropped single-shot request costs you the whole file. Use
+  single-shot for clips under 100 MB and the resumable protocol for anything bigger.
 </Tip>
+
+## Replacing the file
+
+Upload to a video that already has a file in that orientation and the new file replaces the
+old one. The video keeps its id, embed code, settings and analytics. If the running time
+changed, the transcript is read again from the new file.
+
+## Folders
+
+File uploads into a folder so you can find them in the dashboard. A folder changes where
+a video is listed and nothing about how it plays.
+
+```bash curl
+curl -X POST https://app.trackplay.io/api/v1/folders \
+  -H "Authorization: Bearer tplt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "Feature tours" }'
+```
+
+```json 201 Created
+{ "folder": { "id": 42, "parent_id": null, "name": "Feature tours", "color": null, "created_at": "2026-09-25T10:00:00.000000Z", "updated_at": "2026-09-25T10:00:00.000000Z" } }
+```
+
+`GET /v1/folders` (scope `videos:read`) lists them with a `videos_count`. Pass `parent_id`
+to nest one folder in another. Move an existing video with
+`PATCH /v1/videos/{video}` and `{ "folder_id": 42 }`.
+
+## Limits
+
+| | |
+| --- | --- |
+| File size | 5 GB per file, per orientation |
+| Types | mp4, mov, m4v, avi, webm, ogv, 3gp, mkv |
+| Chunk size | 8 MB (fixed by the server) |
+| Session lifetime | 24 hours from init |
+| Write rate | 60 write calls per minute per token. Every chunk counts, so one token moves at most about 480 MB a minute. |
+| Read rate | 600 calls per minute per token (the status poll is a read) |
 
 ## Errors
 
+Every error has the shape `{"error": {"code": "...", "message": "..."}}`. Chunk and
+complete errors also carry the server's real `offset`, so you always know where to resume.
+
 <AccordionGroup>
-  <Accordion title="401: INVALID_TOKEN">
-    The token is wrong, expired, or revoked.
+  <Accordion title="401: INVALID_TOKEN or AUTH_REQUIRED">
+    The token is missing, wrong, expired or revoked.
   </Accordion>
   <Accordion title="403: INSUFFICIENT_SCOPE">
-    All upload calls need `videos:write`.
-  </Accordion>
-  <Accordion title="404: UPLOAD_NOT_FOUND">
-    The `upload_id` does not exist or its session expired. `{"error": {"code":
-    "UPLOAD_NOT_FOUND", "message": "Upload session not found or expired."}}`
+    Uploads need `videos:write`.
   </Accordion>
   <Accordion title="404: VIDEO_NOT_FOUND">
-    Returned from `/complete` if the video the session was opened against no longer
-    exists in your workspace.
+    No video with that id in the token's workspace.
+  </Accordion>
+  <Accordion title="404: UPLOAD_NOT_FOUND">
+    The session does not exist, expired, or belongs to another workspace.
+  </Accordion>
+  <Accordion title="400: OFFSET_REQUIRED, EMPTY_CHUNK, SIZE_EXCEEDED">
+    A chunk had no `Upload-Offset` header, carried zero bytes, or went past the `size` you
+    declared at init.
   </Accordion>
   <Accordion title="409: OFFSET_MISMATCH">
-    Your `Upload-Offset` is ahead of what the server has recorded. `{"error": {"code":
-    "OFFSET_MISMATCH", "message": "Expected offset 20971520, got 41943040."}}`
+    Your `Upload-Offset` is ahead of what the server has, so a chunk was lost. Resend from
+    the `offset` in the response.
   </Accordion>
-  <Accordion title="400: EMPTY_CHUNK">
-    A chunk `PATCH` carried zero bytes.
+  <Accordion title="409: INCOMPLETE">
+    Complete was called before every byte arrived. Send the rest from `offset`.
   </Accordion>
-  <Accordion title="400: NO_CHUNKS">
-    `/complete` was called before any chunk was sent.
+  <Accordion title="422: UNSUPPORTED_MEDIA_TYPE">
+    The bytes are not a video, whatever the declared type said. The session is closed.
   </Accordion>
-  <Accordion title="422">
-    Validation failed on init or the single-shot call, Laravel's default shape:
-    `{"message": "The given data was invalid.", "errors": {"mime_type": ["The selected
-    mime type is invalid."]}}`.
+  <Accordion title="422: validation">
+    Laravel's shape: `{"message": "...", "errors": {"size": ["..."]}}`. Usually a file over
+    5 GB or a type that is not on the list.
   </Accordion>
-  <Accordion title="500: CDN_ERROR">
-    The assembled file (or the single-shot file) failed to reach the CDN. Nothing was
-    saved to the video. Start the upload over.
+  <Accordion title="422: FOLDER_NOT_FOUND">
+    The `folder_id` is not a folder in your workspace.
+  </Accordion>
+  <Accordion title="507: INSUFFICIENT_STORAGE">
+    The server cannot take a file that size right now. Retry later. Nothing was saved.
+  </Accordion>
+  <Accordion title="Status error: the encode failed">
+    `status` is `error` and the orientation's `error` explains it, for example a corrupt or
+    truncated file. Upload a fresh copy to the same video.
   </Accordion>
   <Accordion title="429">
-    Rate limited. 60 writes per minute per token, and every chunk `PATCH` counts
-    against it.
+    Rate limited. Wait for the time in the `Retry-After` header.
   </Accordion>
 </AccordionGroup>

@@ -110,8 +110,17 @@ curl https://app.trackplay.io/api/v1/videos/512 \
     `GET /v1/videos/{video}/embed` returns the ready-to-paste snippet plus the timed
     events configured on it:
     ```json
-    { "html": "<script src=\"https://scripts.trackplay.io/9f2c1a7e....js\" async></script>", "timed_events": [] }
+    { "html": "<script src=\"https://scripts.trackplay.io/9f2c1a7e....js\" async></script>", "mode": "default", "timed_events": [] }
     ```
+    Add `?mode=plain` for the [plain mode](/player/plain-mode) snippet: a silent looping
+    clip with nothing on top of it, loaded only when it nears the screen. `mode` in the
+    response says which one you got.
+  </Tab>
+  <Tab title="Processing status">
+    `GET /v1/videos/{video}/status` says whether the video is `waiting_for_upload`,
+    `processing`, `ready` or in `error`, per orientation, and carries both embed snippets
+    once it is ready. It is the call to poll after an upload. See
+    [the status object](/api-reference/uploads#the-status-object).
   </Tab>
   <Tab title="Player config">
     `GET /v1/videos/{video}/config` returns the shape the embed loader itself consumes:
@@ -143,10 +152,16 @@ existing video.
   Max 255 characters.
 </ParamField>
 <ParamField body="folder_id" type="integer">
-  Puts the video in an existing folder.
+  Puts the video in an existing folder of this workspace. Create one with
+  [`POST /v1/folders`](/api-reference/uploads#folders). A folder id from another workspace,
+  or one that does not exist, is refused with `422 FOLDER_NOT_FOUND`.
 </ParamField>
 <ParamField body="tags" type="string[]">
   Each tag max 64 characters.
+</ParamField>
+<ParamField body="plain_mode" type="boolean" default="false">
+  `true` makes the video a silent looping clip with no overlays, prompts or controls. See
+  [Plain mode](/player/plain-mode).
 </ParamField>
 <ParamField body="player_version" type="string" default="v2">
   One of `v1`, `v2`, `1`, `2`.
@@ -197,9 +212,13 @@ await fetch('https://app.trackplay.io/api/v1/videos', {
     "player_version": "v2",
     "created_at": "2026-08-12T10:00:00Z",
     "updated_at": "2026-08-12T10:00:00Z"
-  }
+  },
+  "status": { "id": 512, "status": "waiting_for_upload", "orientations": { "landscape": null, "portrait": null }, "plain_mode": false, "embed": null, "...": "..." }
 }
 ```
+
+`status` is the same [status object](/api-reference/uploads#the-status-object) you poll
+after an upload.
 
 **Side effect**: fires the `video.created` webhook, with `{"video": {"id", "code",
 "title"}}`. See [Webhooks API](/api-reference/webhooks-api) to subscribe.
@@ -210,7 +229,8 @@ await fetch('https://app.trackplay.io/api/v1/videos', {
   Max 255 characters.
 </ParamField>
 <ParamField body="folder_id" type="integer">
-  Pass `null` to move it out of its folder.
+  A folder in this workspace (anything else is `422 FOLDER_NOT_FOUND`). Pass `null` to
+  move it out of its folder.
 </ParamField>
 <ParamField body="tags" type="string[]">
   Replaces the tag list entirely. There is no add-one-tag call.
